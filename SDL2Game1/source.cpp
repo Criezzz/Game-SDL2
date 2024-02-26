@@ -25,9 +25,6 @@ void close();
 //Loads individual image
 SDL_Surface* loadSurface(std::string path);
 
-//Loads individual image as texture
-SDL_Texture* loadTexture(std::string path);
-
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
 
