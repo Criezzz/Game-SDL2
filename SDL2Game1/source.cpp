@@ -22,7 +22,7 @@ void close();
 
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
-
+Mix_Music* gMusic = NULL;
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
 
@@ -98,6 +98,23 @@ private:
 };
 gTexture test;
 gTexture background;
+bool playMusic(std::string path) {
+	if (gMusic != NULL) {
+		Mix_HaltMusic();
+		Mix_FreeMusic(gMusic);
+		gMusic == NULL;
+	}
+	gMusic = Mix_LoadMUS(path.c_str());
+	if (gMusic == NULL)
+	{
+		printf("Failed to load beat music! SDL_mixer Error: %s\n", Mix_GetError());
+	}
+	else
+	{
+		Mix_PlayMusic(gMusic, -1);
+	}
+	return gMusic != NULL;
+}
 bool init()
 {
 	//Initialization flag
@@ -111,6 +128,12 @@ bool init()
 	}
 	else
 	{
+		//Initialize SDL
+		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+		{
+			printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
+			success = false;
+		}
 		//Create renderer for window
 		gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 		if (gRenderer == NULL)
@@ -119,7 +142,7 @@ bool init()
 			success = false;
 		}
 		else
-		{
+		{	
 			//Initialize renderer color
 			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 
@@ -128,6 +151,12 @@ bool init()
 			if (!(IMG_Init(imgFlags) & imgFlags))
 			{
 				printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
+				success = false;
+			}
+			//Initialize SDL_mixer
+			if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+			{
+				printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
 				success = false;
 			}
 		}
@@ -140,7 +169,10 @@ bool loadMedia()
 {
 	//Loading success flag
 	bool success = true;
-
+	if (!playMusic("src/back.wav")) {
+		printf("Failed to load music!\n");
+		success = false;
+	}
 	if (!test.loadFromFile("src/slime.png"))
 	{
 		printf("Failed to load texture image!\n");
@@ -166,8 +198,11 @@ void close()
 	SDL_DestroyWindow(gWindow);
 	gWindow = NULL;
 	gRenderer = NULL;
+	Mix_FreeMusic(gMusic);
+	gMusic = NULL;
 
 	//Quit SDL subsystems
+	Mix_Quit();
 	IMG_Quit();
 	SDL_Quit();
 }
