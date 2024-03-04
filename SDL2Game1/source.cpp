@@ -189,6 +189,8 @@ public:
 				{
 				case SDL_MOUSEMOTION:
 					current = MOUSEIN;
+					// need prepare this code
+					mousePress();
 					break;
 
 				case SDL_MOUSEBUTTONDOWN:
