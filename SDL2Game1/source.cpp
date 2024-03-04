@@ -3,13 +3,20 @@ and may not be redistributed without written permission.*/
 
 //Using SDL and standard IO
 #include <SDL.h>
+#include <vector>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 #include <stdio.h>
 #include <string>
-
-
-//Screen dimension constants
+int const totalButton = 1;
+const int buttonStateSize = 4; //increase this everytime you add buttonSheet
+//enum must-have things in a array from gButton[TOTAL_BUTTON]
+enum buttonSheet { // remember to increase buttonStateSize whenever add new status in this
+	MOUSEOUT = 0,
+	MOUSEIN = 1,
+	MOUSEDOWN = 2,
+	MOUSEUP = 3,
+};
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
 bool init();
@@ -26,12 +33,15 @@ Mix_Music* gMusic = NULL;
 //The window renderer
 SDL_Renderer* gRenderer = NULL;
 
+
 class gTexture
 {
 public:
 	//Initializes variables
 	gTexture() {
 		mTexture = NULL;
+		xaxis = 0;
+		yaxis = 0;
 		mWidth = 0;
 		mHeight = 0;
 	}
@@ -71,12 +81,14 @@ public:
 				mTexture = NULL;
 				mWidth = 0;
 				mHeight = 0;
+				xaxis = 0;
+				yaxis = 0;
 			}
 	}
 
 	//Renders texture at given point
-	void render(int x, int y) {
-		SDL_Rect box = { x, y, mWidth, mHeight };
+	void render() {
+		SDL_Rect box = { xaxis, yaxis, mWidth, mHeight };
 		SDL_RenderCopy(gRenderer, mTexture, NULL, &box);
 	}
 
@@ -87,22 +99,125 @@ public:
 	int getHeight() {
 		return mHeight;
 	}
+	int getXaxis() {
+		return xaxis;
+	}
+	int getYaxis() {
+		return yaxis;
+	}
+	void setXaxis(int x) {
+		xaxis = x;
+	}
+	void setYaxis(int y) {
+		yaxis = y;
+	}
+	
 
 private:
 	//The actual hardware texture
 	SDL_Texture* mTexture;
-
 	//Image dimensions
+	int xaxis;
+	int yaxis;
 	int mWidth;
 	int mHeight;
 };
-gTexture test;
+class gButton
+{
+public:
+	gTexture store[buttonStateSize];
+	//Initializes internal variables
+	gButton(gTexture but) 
+	{
+		for (int i = 0; i < buttonStateSize; i++) {
+			store[i] = but;
+	}
+		mPos.x = but.getXaxis();
+		mPos.y = but.getYaxis();
+		mPos.w = but.getWidth();
+		mPos.h = but.getHeight();
+		current = MOUSEOUT;
+	}
+	void mousePress(SDL_MouseButtonEvent& b) {
+		if (b.button == SDL_BUTTON_LEFT) {
+			store[current].render();
+		}
+	}
+	void insTexture(int m, gTexture& z) {
+		store[m] = z;
+		
+	}
+	//Handles mouse event
+	void handleEvent(SDL_Event* e) {
+		//If mouse event happened
+		if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
+		{
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			//Check if mouse is in button
+			bool inside = true;
+
+			//Mouse is left of the button
+			if (x < mPos.x)
+			{
+				inside = false;
+			}
+			//Mouse is right of the button
+			else if (x > mPos.x + mPos.w)
+			{
+				inside = false;
+			}
+			//Mouse above the button
+			else if (y < mPos.y)
+			{
+				inside = false;
+			}
+			//Mouse below the button
+			else if (y > mPos.y + mPos.h)
+			{
+				inside = false;
+
+			}
+			if (!inside)
+			{
+				current = MOUSEOUT;
+			}
+			//Mouse is inside button
+			else
+			{
+				switch (e->type)
+				{
+				case SDL_MOUSEMOTION:
+					current = MOUSEIN;
+					break;
+
+				case SDL_MOUSEBUTTONDOWN:
+					current = MOUSEDOWN;
+					break;
+
+				case SDL_MOUSEBUTTONUP:
+					current = MOUSEUP;
+					break;
+				}
+			}
+		}
+	}
+private:
+	SDL_Rect mPos;
+	buttonSheet current;
+};
+
+std::vector<gButton> gButtons;
 gTexture background;
+gTexture pvp;
+gTexture bPvp2;
+
+
 bool playMusic(std::string path) {
 	if (gMusic != NULL) {
 		Mix_HaltMusic();
 		Mix_FreeMusic(gMusic);
-		gMusic == NULL;
+		gMusic = NULL;
 	}
 	gMusic = Mix_LoadMUS(path.c_str());
 	if (gMusic == NULL)
@@ -167,15 +282,15 @@ bool init()
 
 bool loadMedia()
 {
+	background.setXaxis(0);	
+	background.setYaxis(0);
+	pvp.setYaxis(0);
+	pvp.setXaxis(0);
+	
 	//Loading success flag
 	bool success = true;
 	if (!playMusic("src/back.wav")) {
 		printf("Failed to load music!\n");
-		success = false;
-	}
-	if (!test.loadFromFile("src/slime.png"))
-	{
-		printf("Failed to load texture image!\n");
 		success = false;
 	}
 	if (!background.loadFromFile("src/backmap1.png"))
@@ -183,15 +298,32 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
+	if (!pvp.loadFromFile("src/pvp.png"))
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!bPvp2.loadFromFile("src/pve.png"))
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
 
+	gButton bPvp(pvp);
+	for (int i = 0; i < totalButton; i++) {
+		gButtons.push_back(bPvp);
+	}
+	
+	
+	gButtons[0].insTexture(2, bPvp2);
 	return success;
 }
 
 void close()
 {
 	//Free loaded texture
-	test.free();
 	background.free();
+	pvp.free();
 
 	//Destroy window    
 	SDL_DestroyRenderer(gRenderer);
@@ -242,14 +374,19 @@ int main(int argc, char* args[])
 					{
 						quit = true;
 					}
+					for (int i = 0; i < totalButton; ++i)
+					{
+						gButtons[i].handleEvent(&e);
+					}
 				}
 				//Clear screen (background -> color in gRenderer) (giong nhu xoa background)
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
 				//Render texture to screen
-				background.render(0, 0);
-				test.render(240, 190);
+				
+				background.render();
+				pvp.render();
 
 				//Update screen
 				SDL_RenderPresent(gRenderer);
