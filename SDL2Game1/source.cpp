@@ -3,6 +3,7 @@ and may not be redistributed without written permission.*/
 
 //Using SDL and standard IO
 #include <SDL.h>
+#include <map>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 #include <stdio.h>
@@ -10,6 +11,8 @@ and may not be redistributed without written permission.*/
 
 
 //Screen dimension constants
+int bg = 1;
+const int totalBtn = 2;
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
 bool init();
@@ -31,9 +34,29 @@ class gTexture
 public:
 	//Initializes variables
 	gTexture() {
+		success = true;
 		mTexture = NULL;
 		mWidth = 0;
 		mHeight = 0;
+		xA = 0;
+		yA = 0;
+	}
+	void load(std::string path) {
+		success = true;
+		free();
+		SDL_Texture* newTexture = NULL;
+		newTexture = IMG_LoadTexture(gRenderer, path.c_str());
+		if (newTexture == NULL)
+		{
+			printf("Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
+			success = false;
+		}
+		else
+		{
+
+			SDL_QueryTexture(newTexture, NULL, NULL, &mWidth, &mHeight);
+		}
+		mTexture = newTexture;
 	}
 
 	//Deallocates memory
@@ -43,25 +66,7 @@ public:
 	}
 
 	//Loads image at specified path
-	bool loadFromFile(std::string path) {
-		//Get rid of preexisting texture
-		free();
-		SDL_Texture* newTexture = NULL;
-		newTexture = IMG_LoadTexture(gRenderer, path.c_str());
-		if (newTexture == NULL)
-		{
-			printf("Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
-		}
-		else
-		{
-			//Get image dimensions
-			SDL_QueryTexture(newTexture, NULL, NULL, &mWidth, &mHeight);
-		}
-		mTexture = newTexture;
-		return mTexture != NULL;
-
-	}
-
+	
 	//Deallocates texture
 	void free() {
 		// Free texture if it exists
@@ -77,6 +82,8 @@ public:
 	//Renders texture at given point
 	void render(int x, int y) {
 		SDL_Rect box = { x, y, mWidth, mHeight };
+		setXA(x);
+		setYA(y);
 		SDL_RenderCopy(gRenderer, mTexture, NULL, &box);
 	}
 
@@ -87,22 +94,158 @@ public:
 	int getHeight() {
 		return mHeight;
 	}
+	void setXA(int x) {
+		xA = x;
+	}
+	
+	void setYA(int y) {
+		xA = y;
+	}
+	int getXA() {
+		return xA;
+	}
+	int getYA() {
+		return yA;
+	}
+	bool check() {
+		return success;
+	}
 
 private:
 	//The actual hardware texture
 	SDL_Texture* mTexture;
 
 	//Image dimensions
+	bool success;
 	int mWidth;
 	int mHeight;
+	int xA;
+	int yA;
 };
-gTexture test;
+//no loadfromfile, we construct by string 
+gTexture slime;
 gTexture background;
+gTexture pvp;
+gTexture pve;
+gTexture ex;
+gTexture moff;
+gTexture mon;
+
+std::map<std::string, std::pair<int, int>> coorBtn{
+	{"pvp",{449,250}},
+	{"pve",{449,250}}
+};
+std::map<std::string, gTexture> myTextures = {
+	{"slime", slime },
+	{"background", background },
+	{"pvp", pvp },
+	{"pve", pve },
+	{"mon", mon },
+	{"moff", moff },
+	{"ex", ex }
+};
+class gBtn {
+public:
+	gBtn() {
+		mPos.x = 0;
+		mPos.y = 0;
+		mPos.w = 0;
+		mPos.h = 0;
+		com = "";
+	}
+	void getInf(std::string temp) {
+		mPos.x = coorBtn[temp].first;
+		mPos.y = coorBtn[temp].second;
+		mPos.w = myTextures[temp].getWidth();
+		mPos.h = myTextures[temp].getHeight();
+		com = temp;
+	}
+	void handleEvent(SDL_Event* e)
+	{
+		if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
+		{
+			//Get mouse position
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			//Check if mouse is in button
+			bool inside = true;
+
+			//Mouse is left of the button
+			if (x < mPos.x)
+			{
+				inside = false;
+			}
+			//Mouse is right of the button
+			else if (x > mPos.x + mPos.w)
+			{
+				inside = false;
+			}
+			//Mouse above the button
+			else if (y < mPos.y)
+			{
+				inside = false;
+			}
+			//Mouse below the button
+			else if (y > mPos.y + mPos.h)
+			{
+				inside = false;
+			}
+			//Mouse is outside button
+			if (!inside)
+			{
+				//place holder
+			}
+			//Mouse is inside button
+			else
+			{
+				//Set mouse over sprite
+				switch (e->type)
+				{
+				/*case SDL_MOUSEMOTION:
+					
+					break;*/
+
+				case SDL_MOUSEBUTTONDOWN:
+					if (com == "pvp" && e->button.button == SDL_BUTTON_LEFT) {
+						bg = 2;
+
+					}
+					else if (com == "pve" && e->button.button == SDL_BUTTON_LEFT ) {
+						bg = 1;
+					}
+					break;
+
+				/*case SDL_MOUSEBUTTONUP:
+					
+					break;*/
+				}
+			}
+		}
+	}
+	
+private: 
+	SDL_Rect mPos;
+	std::string com;
+
+};
+
+gBtn gBtns[totalBtn];
+
+
+void background1() {
+	myTextures["background"].render(0, 0);
+	myTextures["pvp"].render(coorBtn["pvp"].first, coorBtn["pvp"].second);
+}
+void background2() {
+	myTextures["background"].render(0, 0);
+	myTextures["pve"].render(coorBtn["pve"].first, coorBtn["pve"].second);
+}
+
 bool playMusic(std::string path) {
 	if (gMusic != NULL) {
 		Mix_HaltMusic();
 		Mix_FreeMusic(gMusic);
-		gMusic == NULL;
+		gMusic = NULL;
 	}
 	gMusic = Mix_LoadMUS(path.c_str());
 	if (gMusic == NULL)
@@ -161,37 +304,66 @@ bool init()
 			}
 		}
 	}
-
 	return success;
 }
 
 bool loadMedia()
 {
+	myTextures["slime"].load("src/slime.png");
+	myTextures["background"].load("src/backmap1.png");
+	myTextures["pvp"].load("src/pvp.png");
+	myTextures["pve"].load("src/pve.png");
+	myTextures["ex"].load("src/ex.png");
+	myTextures["moff"].load("src/moff.png");
+	myTextures["mon"].load("src/mon.png");
 	//Loading success flag
 	bool success = true;
 	if (!playMusic("src/back.wav")) {
 		printf("Failed to load music!\n");
 		success = false;
 	}
-	if (!test.loadFromFile("src/slime.png"))
+	if (!myTextures["slime"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	if (!background.loadFromFile("src/backmap1.png"))
+	if (!myTextures["background"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-
+	if (!myTextures["pvp"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["pve"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["ex"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["moff"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["mon"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	gBtns[0].getInf("pvp");
+	gBtns[1].getInf("pve");
 	return success;
 }
 
 void close()
 {
-	//Free loaded texture
-	test.free();
-	background.free();
 
 	//Destroy window    
 	SDL_DestroyRenderer(gRenderer);
@@ -242,16 +414,27 @@ int main(int argc, char* args[])
 					{
 						quit = true;
 					}
+					
+					for (int i = 0; i < totalBtn; ++i)
+					{
+						int temp = bg;
+						gBtns[i].handleEvent(&e);
+						if (bg != temp) {
+							break;
+						}
+					}
+
 				}
+
 				//Clear screen (background -> color in gRenderer) (giong nhu xoa background)
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
-
-				//Render texture to screen
-				background.render(0, 0);
-				test.render(240, 190);
-
-				//Update screen
+				if (bg == 1) {
+					background1();
+				}
+				else if (bg == 2) {
+					background2();
+				}
 				SDL_RenderPresent(gRenderer);
 			}
 		}
