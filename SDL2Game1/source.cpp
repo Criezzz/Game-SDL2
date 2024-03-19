@@ -308,7 +308,6 @@ struct Snake {
 	void move(SDL_Event* e)
 	{
 		std::ofstream out;
-		out.open("src/save.txt");
 		switch (e->type)
 		{
 			case SDL_KEYDOWN:
@@ -316,26 +315,42 @@ struct Snake {
 					case SDLK_DOWN:
 						a[head.posY][head.posX] = 0;
 						a[head.posY+1][head.posX] = 1;
-						for (int i = 0; i < 20; i++)
+						std::remove("src/save.txt");
+						out.open("src/save.txt");
+						for (int i = 0; i < 20; i++) {
 							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+							out << '\n';
+						}
 						break;
 					case SDLK_UP:
 						a[head.posY][head.posX] = 0;
 						a[head.posY - 1][head.posX] = 1;
-						for (int i = 0; i < 20; i++)
+						std::remove("src/save.txt");
+						out.open("src/save.txt");
+						for (int i = 0; i < 20; i++) {
 							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+							out << '\n';
+						}
 						break;
 					case SDLK_RIGHT:
 						a[head.posY][head.posX] = 0;
 						a[head.posY][head.posX+1] = 1;
-						for (int i = 0; i < 20; i++)
+						std::remove("src/save.txt");
+						out.open("src/save.txt");
+						for (int i = 0; i < 20; i++) {
 							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+							out << '\n';
+						}
 						break;
 					case SDLK_LEFT:
 						a[head.posY][head.posX] = 0;
 						a[head.posY][head.posX-1] = 1;
-						for (int i = 0; i < 20; i++)
+						std::remove("src/save.txt");
+						out.open("src/save.txt");
+						for (int i = 0; i < 20; i++) {
 							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+							out << '\n';
+						}
 						break;
 					default:
 					break;
