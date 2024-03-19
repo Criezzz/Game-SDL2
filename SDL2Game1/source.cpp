@@ -8,9 +8,13 @@ and may not be redistributed without written permission.*/
 #include <SDL_mixer.h>
 #include <stdio.h>
 #include <string>
+#include <fstream>
+#include <vector>
 
 
 //Screen dimension constants
+bool quit = false;
+int a[20][12];
 int bg = 1;
 bool music = true;
 std::string toggleMusic = "mon";
@@ -126,6 +130,7 @@ private:
 };
 //no loadfromfile, we construct by string 
 gTexture slime;
+gTexture head;
 gTexture background;
 gTexture playground;
 gTexture pve;
@@ -144,6 +149,7 @@ std::map<std::string, std::pair<int, int>> coorBtn{
 };
 std::map<std::string, gTexture> myTextures = {
 	{"slime", slime },
+	{"head", head },
 	{"background", background },
 	{"mainMenu", mainMenu },
 	{"pve", pve },
@@ -235,6 +241,10 @@ public:
 							toggleMusic = "mon";
 						}
 					}
+					else if (com == "ex" && e->button.button == SDL_BUTTON_LEFT) {
+						quit = true;
+					}
+
 					break;
 
 				/*case SDL_MOUSEBUTTONUP:
@@ -248,8 +258,8 @@ public:
 private: 
 	SDL_Rect mPos;
 	std::string com;
-
 };
+
 
 gBtn gBtns1[totalBtn1];
 gBtn gBtns2[totalBtn2];
@@ -261,12 +271,91 @@ void background1() {
 	myTextures[toggleMusic].render(coorBtn["mon"].first, coorBtn["mon"].second);
 
 }
+struct Snake_pos {
+	int posX;
+	int posY;
+	int cur_dir;
+};
+struct Snake {
+	Snake_pos head;
+	std::vector<Snake_pos> body;
+	Snake_pos tail;
+	void getPos(){
+		std::ifstream in;
+		in.open("src/save.txt");
+		for (int i = 0; i < 20; i++) {
+			for (int j = 0; j < 12; j++) {
+				in >> a[i][j];
+			}
+		}
+		for (int i = 0; i < 20; i++) {
+			for (int j = 0; j < 12; j++) {
+				if (a[i][j] == 1) {
+					head.posX = j;
+					head.posY = i;
+				}
+			}
+		}
+		in.close();
+	}
+
+	void draw(){
+			
+			myTextures["head"].render(head.posX * 32 + 64, head.posY * 32 + 64);
+
+
+	}
+	void move(SDL_Event* e)
+	{
+		std::ofstream out;
+		out.open("src/save.txt");
+		switch (e->type)
+		{
+			case SDL_KEYDOWN:
+				switch (e->key.keysym.sym) {
+					case SDLK_DOWN:
+						a[head.posY][head.posX] = 0;
+						a[head.posY+1][head.posX] = 1;
+						for (int i = 0; i < 20; i++)
+							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+						break;
+					case SDLK_UP:
+						a[head.posY][head.posX] = 0;
+						a[head.posY - 1][head.posX] = 1;
+						for (int i = 0; i < 20; i++)
+							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+						break;
+					case SDLK_RIGHT:
+						a[head.posY][head.posX] = 0;
+						a[head.posY][head.posX+1] = 1;
+						for (int i = 0; i < 20; i++)
+							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+						break;
+					case SDLK_LEFT:
+						a[head.posY][head.posX] = 0;
+						a[head.posY][head.posX-1] = 1;
+						for (int i = 0; i < 20; i++)
+							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+						break;
+					default:
+					break;
+				}
+			
+		}
+		out.close();
+	}
+
+};
+Snake player;
 void background2() {
 	myTextures["background"].render(0, 0);
 	myTextures["mainMenu"].render(coorBtn["mainMenu"].first, coorBtn["mainMenu"].second);
 	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
-	myTextures["playground"].render(62,64);
-	myTextures["playground"].render(574, 64);
+	myTextures["playground"].render(62,62);
+	myTextures["playground"].render(574, 62);
+	player.getPos();
+	player.draw();
+
 }
 
 bool playMusic(std::string path) {
@@ -337,6 +426,7 @@ bool init()
 
 bool loadMedia()
 {
+	myTextures["head"].load("src/Snake_head.png");
 	myTextures["slime"].load("src/slime.png");
 	myTextures["background"].load("src/backmap1.png");
 	myTextures["playground"].load("src/playground.png");
@@ -352,6 +442,11 @@ bool loadMedia()
 		success = false;
 	}
 	if (!myTextures["slime"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["head"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -437,7 +532,6 @@ int main(int argc, char* args[])
 		else
 		{
 			//Main loop flag
-			bool quit = false;
 
 			//Event handler
 			SDL_Event e;
@@ -472,8 +566,11 @@ int main(int argc, char* args[])
 								break;
 							}
 						}
+						player.move(&e);
+
+
+
 					}
-					
 
 				}
 				//Clear screen (background -> color in gRenderer) (giong nhu xoa background)
