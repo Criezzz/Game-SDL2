@@ -12,6 +12,8 @@ and may not be redistributed without written permission.*/
 
 //Screen dimension constants
 int bg = 1;
+bool music = true;
+std::string toggleMusic = "mon";
 const int totalBtn1 = 4;
 const int totalBtn2 = 2;
 const int SCREEN_WIDTH = 1024;
@@ -220,10 +222,18 @@ public:
 						bg = 1;
 					}
 					else if (com == "mon" && e->button.button == SDL_BUTTON_LEFT) {
-						myTextures["mon"] = moff;
-					}
-					else if (com == "moff" && e->button.button == SDL_BUTTON_LEFT) {
-						myTextures["mon"] = ex;
+						if (music == true) {
+							music = false;
+							Mix_Pause(-1);
+							Mix_PauseMusic();
+							toggleMusic = "moff";
+						}
+						else {
+							music = true;
+							Mix_Resume(-1);
+							Mix_ResumeMusic();
+							toggleMusic = "mon";
+						}
 					}
 					break;
 
@@ -248,7 +258,7 @@ void background1() {
 	myTextures["background"].render(0, 0);
 	myTextures["pve"].render(coorBtn["pve"].first, coorBtn["pve"].second);
 	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
-	myTextures["mon"].render(coorBtn["mon"].first, coorBtn["mon"].second);
+	myTextures[toggleMusic].render(coorBtn["mon"].first, coorBtn["mon"].second);
 
 }
 void background2() {
