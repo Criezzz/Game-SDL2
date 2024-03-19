@@ -12,7 +12,8 @@ and may not be redistributed without written permission.*/
 
 //Screen dimension constants
 int bg = 1;
-const int totalBtn = 2;
+const int totalBtn1 = 4;
+const int totalBtn2 = 2;
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
 bool init();
@@ -53,7 +54,6 @@ public:
 		}
 		else
 		{
-
 			SDL_QueryTexture(newTexture, NULL, NULL, &mWidth, &mHeight);
 		}
 		mTexture = newTexture;
@@ -125,24 +125,30 @@ private:
 //no loadfromfile, we construct by string 
 gTexture slime;
 gTexture background;
-gTexture pvp;
+gTexture playground;
 gTexture pve;
 gTexture ex;
 gTexture moff;
 gTexture mon;
+gTexture mainMenu;
 
 std::map<std::string, std::pair<int, int>> coorBtn{
-	{"pvp",{449,250}},
-	{"pve",{449,250}}
+	{"pve",{449,250}},
+	{"ex",{449,600}},
+	{"mon",{850,600}},
+	{"moff",{850,600}},
+	{"mainMenu",{449,250}},
+	
 };
 std::map<std::string, gTexture> myTextures = {
 	{"slime", slime },
 	{"background", background },
-	{"pvp", pvp },
+	{"mainMenu", mainMenu },
 	{"pve", pve },
 	{"mon", mon },
 	{"moff", moff },
-	{"ex", ex }
+	{"ex", ex },
+	{"playground",playground}
 };
 class gBtn {
 public:
@@ -206,12 +212,18 @@ public:
 					break;*/
 
 				case SDL_MOUSEBUTTONDOWN:
-					if (com == "pvp" && e->button.button == SDL_BUTTON_LEFT) {
+					if (com == "pve" && e->button.button == SDL_BUTTON_LEFT) {
 						bg = 2;
 
 					}
-					else if (com == "pve" && e->button.button == SDL_BUTTON_LEFT ) {
+					else if (com == "mainMenu" && e->button.button == SDL_BUTTON_LEFT ) {
 						bg = 1;
+					}
+					else if (com == "mon" && e->button.button == SDL_BUTTON_LEFT) {
+						myTextures["mon"] = moff;
+					}
+					else if (com == "moff" && e->button.button == SDL_BUTTON_LEFT) {
+						myTextures["mon"] = ex;
 					}
 					break;
 
@@ -229,16 +241,22 @@ private:
 
 };
 
-gBtn gBtns[totalBtn];
-
+gBtn gBtns1[totalBtn1];
+gBtn gBtns2[totalBtn2];
 
 void background1() {
 	myTextures["background"].render(0, 0);
-	myTextures["pvp"].render(coorBtn["pvp"].first, coorBtn["pvp"].second);
+	myTextures["pve"].render(coorBtn["pve"].first, coorBtn["pve"].second);
+	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
+	myTextures["mon"].render(coorBtn["mon"].first, coorBtn["mon"].second);
+
 }
 void background2() {
 	myTextures["background"].render(0, 0);
-	myTextures["pve"].render(coorBtn["pve"].first, coorBtn["pve"].second);
+	myTextures["mainMenu"].render(coorBtn["mainMenu"].first, coorBtn["mainMenu"].second);
+	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
+	myTextures["playground"].render(62,64);
+	myTextures["playground"].render(574, 64);
 }
 
 bool playMusic(std::string path) {
@@ -311,9 +329,10 @@ bool loadMedia()
 {
 	myTextures["slime"].load("src/slime.png");
 	myTextures["background"].load("src/backmap1.png");
-	myTextures["pvp"].load("src/pvp.png");
+	myTextures["playground"].load("src/playground.png");
 	myTextures["pve"].load("src/pve.png");
 	myTextures["ex"].load("src/ex.png");
+	myTextures["mainMenu"].load("src/pvp.png"); // pvp == place holder
 	myTextures["moff"].load("src/moff.png");
 	myTextures["mon"].load("src/mon.png");
 	//Loading success flag
@@ -327,12 +346,17 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
+	if (!myTextures["playground"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
 	if (!myTextures["background"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	if (!myTextures["pvp"].check())
+	if (!myTextures["mainMenu"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -357,8 +381,13 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	gBtns[0].getInf("pvp");
-	gBtns[1].getInf("pve");
+	gBtns1[0].getInf("pve");
+	gBtns1[1].getInf("ex");
+	gBtns1[2].getInf("mon");
+	gBtns1[3].getInf("moff");
+
+	gBtns2[0].getInf("mainMenu");
+	gBtns2[1].getInf("ex");
 	return success;
 }
 
@@ -414,18 +443,29 @@ int main(int argc, char* args[])
 					{
 						quit = true;
 					}
-					
-					for (int i = 0; i < totalBtn; ++i)
-					{
-						int temp = bg;
-						gBtns[i].handleEvent(&e);
-						if (bg != temp) {
-							break;
+					if (bg == 1) {
+						for (int i = 0; i < totalBtn1; ++i)
+						{
+							int temp = bg;
+							gBtns1[i].handleEvent(&e);
+							if (bg != temp) {
+								break;
+							}
 						}
 					}
+					else if (bg == 2) {
+						for (int i = 0; i < totalBtn2; ++i)
+						{
+							int temp = bg;
+							gBtns2[i].handleEvent(&e);
+							if (bg != temp) {
+								break;
+							}
+						}
+					}
+					
 
 				}
-
 				//Clear screen (background -> color in gRenderer) (giong nhu xoa background)
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
