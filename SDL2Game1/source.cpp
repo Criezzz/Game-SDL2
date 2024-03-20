@@ -10,10 +10,16 @@ and may not be redistributed without written permission.*/
 #include <string>
 #include <fstream>
 #include <vector>
+#include <time.h>
 
 
 //Screen dimension constants
+int countedFrames = 0;
+
+//Main loop flag
 bool quit = false;
+
+
 int a[20][12];
 int bg = 1;
 bool music = true;
@@ -131,6 +137,7 @@ private:
 //no loadfromfile, we construct by string 
 gTexture slime;
 gTexture head;
+gTexture apple;
 gTexture background;
 gTexture playground;
 gTexture pve;
@@ -150,6 +157,7 @@ std::map<std::string, std::pair<int, int>> coorBtn{
 std::map<std::string, gTexture> myTextures = {
 	{"slime", slime },
 	{"head", head },
+	{"apple", apple },
 	{"background", background },
 	{"mainMenu", mainMenu },
 	{"pve", pve },
@@ -157,6 +165,7 @@ std::map<std::string, gTexture> myTextures = {
 	{"moff", moff },
 	{"ex", ex },
 	{"playground",playground}
+
 };
 class gBtn {
 public:
@@ -272,14 +281,22 @@ void background1() {
 
 }
 struct Snake_pos {
+	// Get position of snake parts
 	int posX;
 	int posY;
+	// Get direct of snake parts
+	// right = 0, left = 1, up = 2, down = 3
 	int cur_dir;
 };
 struct Snake {
-	Snake_pos head;
+	// Set up snake head 
+	Snake_pos head{0,0,1};
 	std::vector<Snake_pos> body;
 	Snake_pos tail;
+	clock_t time_req = clock();
+	bool Has_Eaten_Apple = 0;
+	int appleX = rand() % 12;
+	int appleY = rand() % 20;
 	void getPos(){
 		std::ifstream in;
 		in.open("src/save.txt");
@@ -298,68 +315,106 @@ struct Snake {
 		}
 		in.close();
 	}
-
+	void generate_apple() {
+		while (a[appleY][appleX] == 1 || Has_Eaten_Apple==1) {
+			appleX = rand() % 12;
+			appleY = rand() % 20;
+		}
+		myTextures["apple"].render(appleX * 32 + 64, appleY * 32 + 64);
+	}
 	void draw(){
 			
 			myTextures["head"].render(head.posX * 32 + 64, head.posY * 32 + 64);
-
-
+			generate_apple();
 	}
-	void move(SDL_Event* e)
+	void move()
 	{
 		std::ofstream out;
+		std::ofstream p;
+
+		if (countedFrames > 12) {
+			switch (head.cur_dir) {
+			case 0:
+				if (head.posX < 11) {
+					a[head.posY][head.posX] = 0;
+					a[head.posY][head.posX + 1] = 1;
+					myTextures["head"].load("src/Snake_head_right.png");
+				}
+				break;
+			case 1:
+				if (head.posX > 0) {
+					a[head.posY][head.posX] = 0;
+					a[head.posY][head.posX - 1] = 1;
+					myTextures["head"].load("src/Snake_head_left.png");
+				}
+				break;
+			case 2:
+				if (head.posY > 0) {
+					a[head.posY][head.posX] = 0;
+					a[head.posY - 1][head.posX] = 1;
+					myTextures["head"].load("src/Snake_head_up.png");
+				}
+				break;
+			case 3:
+				if (head.posY < 19) {
+					a[head.posY][head.posX] = 0;
+					a[head.posY + 1][head.posX] = 1;
+					myTextures["head"].load("src/Snake_head_down.png");
+				}
+				break;
+			default:
+				break;
+			}
+			countedFrames = 0;
+			out.open("src/save.txt");
+			for (int i = 0; i < 20; i++) {
+				for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+				out << '\n';
+			}
+			out.close();
+		}
+	}
+	void GetKey(SDL_Event* e) {
 		switch (e->type)
 		{
-			case SDL_KEYDOWN:
-				switch (e->key.keysym.sym) {
-					case SDLK_DOWN:
-						a[head.posY][head.posX] = 0;
-						a[head.posY+1][head.posX] = 1;
-						std::remove("src/save.txt");
-						out.open("src/save.txt");
-						for (int i = 0; i < 20; i++) {
-							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
-							out << '\n';
-						}
-						break;
-					case SDLK_UP:
-						a[head.posY][head.posX] = 0;
-						a[head.posY - 1][head.posX] = 1;
-						std::remove("src/save.txt");
-						out.open("src/save.txt");
-						for (int i = 0; i < 20; i++) {
-							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
-							out << '\n';
-						}
-						break;
-					case SDLK_RIGHT:
-						a[head.posY][head.posX] = 0;
-						a[head.posY][head.posX+1] = 1;
-						std::remove("src/save.txt");
-						out.open("src/save.txt");
-						for (int i = 0; i < 20; i++) {
-							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
-							out << '\n';
-						}
-						break;
-					case SDLK_LEFT:
-						a[head.posY][head.posX] = 0;
-						a[head.posY][head.posX-1] = 1;
-						std::remove("src/save.txt");
-						out.open("src/save.txt");
-						for (int i = 0; i < 20; i++) {
-							for (int j = 0; j < 12; j++) out << a[i][j] << " ";
-							out << '\n';
-						}
-						break;
-					default:
-					break;
+		case SDL_KEYDOWN:
+		{
+			switch (e->key.keysym.sym) {
+			case SDLK_DOWN: {
+				if (head.cur_dir != 2) 
+				{
+				head.cur_dir = 3;
 				}
-			
-		}
-		out.close();
-	}
+				break;
+			}
+			case SDLK_UP: {
+				if (head.cur_dir != 3) {
+					head.cur_dir = 2;
+				}
+				break;
 
+			}
+			case SDLK_RIGHT: {
+				if (head.cur_dir != 1) {
+					head.cur_dir = 0;
+				}
+				break;
+			}
+			case SDLK_LEFT: {
+				if (head.cur_dir != 0) {
+					head.cur_dir = 1;
+				}
+				break;
+			}
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		}
+		}
+	}
 };
 Snake player;
 void background2() {
@@ -368,8 +423,10 @@ void background2() {
 	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
 	myTextures["playground"].render(62,62);
 	myTextures["playground"].render(574, 62);
-	player.getPos();
 	player.draw();
+	player.getPos();
+	player.move();
+	++countedFrames;
 
 }
 
@@ -441,7 +498,8 @@ bool init()
 
 bool loadMedia()
 {
-	myTextures["head"].load("src/Snake_head.png");
+	myTextures["head"].load("src/Snake_head_left.png");
+	myTextures["apple"].load("src/apple.png");
 	myTextures["slime"].load("src/slime.png");
 	myTextures["background"].load("src/backmap1.png");
 	myTextures["playground"].load("src/playground.png");
@@ -457,6 +515,11 @@ bool loadMedia()
 		success = false;
 	}
 	if (!myTextures["slime"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["apple"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -531,7 +594,9 @@ void close()
 
 int main(int argc, char* args[])
 {
-
+	//Random generate
+	srand(time(NULL));
+	
 	//Start up SDL and create window
 	if (!init())
 	{
@@ -546,10 +611,9 @@ int main(int argc, char* args[])
 		}
 		else
 		{
-			//Main loop flag
-
 			//Event handler
 			SDL_Event e;
+			SDL_Event Smove;
 
 			//While application is running
 			while (!quit)
@@ -571,6 +635,7 @@ int main(int argc, char* args[])
 								break;
 							}
 						}
+
 					}
 					else if (bg == 2) {
 						for (int i = 0; i < totalBtn2; ++i)
@@ -581,12 +646,11 @@ int main(int argc, char* args[])
 								break;
 							}
 						}
-						player.move(&e);
-
-
-
+						if (e.type == SDL_KEYDOWN) {
+							player.GetKey(&e);
+							break;
+						}
 					}
-
 				}
 				//Clear screen (background -> color in gRenderer) (giong nhu xoa background)
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
@@ -596,7 +660,7 @@ int main(int argc, char* args[])
 				}
 				else if (bg == 2) {
 					background2();
-				}
+				} 
 				SDL_RenderPresent(gRenderer);
 			}
 		}
