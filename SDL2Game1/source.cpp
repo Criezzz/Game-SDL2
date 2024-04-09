@@ -10,7 +10,8 @@ and may not be redistributed without written permission.*/
 #include <string>
 #include <fstream>
 #include <vector>
-#include <time.h>
+#include <cstdlib>
+#include <stack>
 
 
 //Screen dimension constants
@@ -135,7 +136,7 @@ private:
 	int yA;
 };
 //no loadfromfile, we construct by string 
-gTexture slime;
+gTexture body;
 gTexture head;
 gTexture apple;
 gTexture background;
@@ -155,7 +156,7 @@ std::map<std::string, std::pair<int, int>> coorBtn{
 	
 };
 std::map<std::string, gTexture> myTextures = {
-	{"slime", slime },
+	{"body", body },
 	{"head", head },
 	{"apple", apple },
 	{"background", background },
@@ -293,11 +294,11 @@ struct Snake {
 	Snake_pos head{0,0,1};
 	std::vector<Snake_pos> body;
 	Snake_pos tail;
-	clock_t time_req = clock();
+	std::stack<int> PRESSKEY;
 	bool Has_Eaten_Apple = 0;
 	int appleX = rand() % 12;
 	int appleY = rand() % 20;
-	void getPos(){
+	void getPos() {
 		std::ifstream in;
 		in.open("src/save.txt");
 		for (int i = 0; i < 20; i++) {
@@ -311,32 +312,37 @@ struct Snake {
 					head.posX = j;
 					head.posY = i;
 				}
+				if (a[i][j] == 10) {
+					appleX = j;
+					appleY = i;
+				}
 			}
 		}
 		in.close();
-	}
-	void generate_apple() {
-		while (a[appleY][appleX] == 1 || Has_Eaten_Apple==1) {
-			appleX = rand() % 12;
-			appleY = rand() % 20;
-		}
-		myTextures["apple"].render(appleX * 32 + 64, appleY * 32 + 64);
-	}
+	} 
 	void draw(){
-			
+		for (auto c : body) {
+			myTextures["body"].render(c.posX * 32 + 64, c.posY * 32 + 64);
+		}
 			myTextures["head"].render(head.posX * 32 + 64, head.posY * 32 + 64);
-			generate_apple();
+			myTextures["apple"].render(appleX * 32 + 64, appleY * 32 + 64);
 	}
 	void move()
 	{
+		a[appleY][appleX] = 10;
 		std::ofstream out;
 		std::ofstream p;
-
 		if (countedFrames > 12) {
+			if (!PRESSKEY.empty()) head.cur_dir = PRESSKEY.top();
 			switch (head.cur_dir) {
 			case 0:
 				if (head.posX < 11) {
 					a[head.posY][head.posX] = 0;
+					if (a[head.posY][head.posX + 1] == 10) {
+						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						body.push_back(*(newbody));
+						Has_Eaten_Apple = 1;
+					}
 					a[head.posY][head.posX + 1] = 1;
 					myTextures["head"].load("src/Snake_head_right.png");
 				}
@@ -344,6 +350,11 @@ struct Snake {
 			case 1:
 				if (head.posX > 0) {
 					a[head.posY][head.posX] = 0;
+					if (a[head.posY][head.posX - 1] == 10) {
+						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						body.push_back(*(newbody));
+						Has_Eaten_Apple = 1;
+					}
 					a[head.posY][head.posX - 1] = 1;
 					myTextures["head"].load("src/Snake_head_left.png");
 				}
@@ -351,6 +362,11 @@ struct Snake {
 			case 2:
 				if (head.posY > 0) {
 					a[head.posY][head.posX] = 0;
+					if (a[head.posY - 1][head.posX] == 10) {
+						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						body.push_back(*(newbody));
+						Has_Eaten_Apple = 1;
+					}
 					a[head.posY - 1][head.posX] = 1;
 					myTextures["head"].load("src/Snake_head_up.png");
 				}
@@ -358,6 +374,11 @@ struct Snake {
 			case 3:
 				if (head.posY < 19) {
 					a[head.posY][head.posX] = 0;
+					if (a[head.posY + 1][head.posX] == 10) {
+						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						body.push_back(*(newbody));
+						Has_Eaten_Apple = 1;
+					}
 					a[head.posY + 1][head.posX] = 1;
 					myTextures["head"].load("src/Snake_head_down.png");
 				}
@@ -365,13 +386,37 @@ struct Snake {
 			default:
 				break;
 			}
-			countedFrames = 0;
+			if (Has_Eaten_Apple) {
+				while (a[appleY][appleX] == 1) {
+					appleY = rand() % 20;
+					appleX = rand() % 12;
+				}
+			}
+			if (body.size() > 1) {
+				for (int i = 0; i < body.size() - 1; i++) {
+					body[i].cur_dir = body[i + 1].cur_dir;
+					body[i].posX = body[i + 1].posX;
+					body[i].posY = body[i + 1].posY;
+				}
+			}
+			if (!(body.empty())) {
+				body[body.size() - 1].cur_dir = head.cur_dir;
+				body[body.size() - 1].posX = head.posX;
+				body[body.size() - 1].posY = head.posY;
+			}
+			p.open("src/test.txt");
+			p << body.size() << " ";
+			p.close();
 			out.open("src/save.txt");
 			for (int i = 0; i < 20; i++) {
 				for (int j = 0; j < 12; j++) out << a[i][j] << " ";
 				out << '\n';
 			}
 			out.close();
+			while (!PRESSKEY.empty()) {
+				PRESSKEY.pop();
+			}
+			countedFrames = 0;
 		}
 	}
 	void GetKey(SDL_Event* e) {
@@ -383,26 +428,26 @@ struct Snake {
 			case SDLK_DOWN: {
 				if (head.cur_dir != 2) 
 				{
-				head.cur_dir = 3;
+					PRESSKEY.push(3);
 				}
 				break;
 			}
 			case SDLK_UP: {
 				if (head.cur_dir != 3) {
-					head.cur_dir = 2;
+					PRESSKEY.push(2);
 				}
 				break;
 
 			}
 			case SDLK_RIGHT: {
 				if (head.cur_dir != 1) {
-					head.cur_dir = 0;
+					PRESSKEY.push(0);
 				}
 				break;
 			}
 			case SDLK_LEFT: {
 				if (head.cur_dir != 0) {
-					head.cur_dir = 1;
+					PRESSKEY.push(1);
 				}
 				break;
 			}
@@ -427,7 +472,6 @@ void background2() {
 	player.getPos();
 	player.move();
 	++countedFrames;
-
 }
 
 bool playMusic(std::string path) {
@@ -500,7 +544,7 @@ bool loadMedia()
 {
 	myTextures["head"].load("src/Snake_head_left.png");
 	myTextures["apple"].load("src/apple.png");
-	myTextures["slime"].load("src/slime.png");
+	myTextures["body"].load("src/Snake_body.png");
 	myTextures["background"].load("src/backmap1.png");
 	myTextures["playground"].load("src/playground.png");
 	myTextures["pve"].load("src/pve.png");
@@ -514,7 +558,7 @@ bool loadMedia()
 		printf("Failed to load music!\n");
 		success = false;
 	}
-	if (!myTextures["slime"].check())
+	if (!myTextures["body"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -577,6 +621,9 @@ bool loadMedia()
 void close()
 {
 
+	// Remove snake
+	player.body.clear();
+
 	//Destroy window    
 	SDL_DestroyRenderer(gRenderer);
 	SDL_DestroyWindow(gWindow);
@@ -594,8 +641,9 @@ void close()
 
 int main(int argc, char* args[])
 {
+
 	//Random generate
-	srand(time(NULL));
+	srand(time(0));
 	
 	//Start up SDL and create window
 	if (!init())
@@ -613,7 +661,6 @@ int main(int argc, char* args[])
 		{
 			//Event handler
 			SDL_Event e;
-			SDL_Event Smove;
 
 			//While application is running
 			while (!quit)
