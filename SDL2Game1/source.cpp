@@ -12,9 +12,82 @@ and may not be redistributed without written permission.*/
 #include <vector>
 #include <cstdlib>
 #include <stack>
+#include <queue>
+//supporting function for scoring
+int mind = -1;
+class QItem {
+public:
+	int row;
+	int col;
+	int dist;
+	QItem(int x, int y, int w) : row(x), col(y), dist(w){	}
+};
+int minDis(int grid[20][12])
+{
+	QItem source(0, 0, 0);
 
+	// To keep track of visited QItems. Marking
+	// blocked cells as visited.
+	bool visited[20][12];
+	for (int i = 0; i < 20; i++) {
+		for (int j = 0; j < 12; j++)
+		{
+			if (grid[i][j] == 2) // 2 == body
+				visited[i][j] = true;
+			else
+				visited[i][j] = false;
 
-//Screen dimension constants
+			// Finding source
+			if (grid[i][j] == 1)
+			{
+				source.row = i;
+				source.col = j;
+			}
+		}
+	}
+
+	// applying BFS on matrix cells starting from source
+	std::queue<QItem> q;
+	q.push(source);
+	visited[source.row][source.col] = true;
+	while (!q.empty()) {
+		QItem p = q.front();
+		q.pop();
+
+		// Destination found;
+		if (grid[p.row][p.col] == 10)
+			return p.dist;
+
+		// moving up
+		if (p.row - 1 >= 0 &&
+			visited[p.row - 1][p.col] == false) {
+			q.push(QItem(p.row - 1, p.col, p.dist + 1));
+			visited[p.row - 1][p.col] = true;
+		}
+
+		// moving down
+		if (p.row + 1 < 20 &&
+			visited[p.row + 1][p.col] == false) {
+			q.push(QItem(p.row + 1, p.col, p.dist + 1));
+			visited[p.row + 1][p.col] = true;
+		}
+
+		// moving left
+		if (p.col - 1 >= 0 &&
+			visited[p.row][p.col - 1] == false) {
+			q.push(QItem(p.row, p.col - 1, p.dist + 1));
+			visited[p.row][p.col - 1] = true;
+		}
+
+		// moving right
+		if (p.col + 1 < 12 && visited[p.row][p.col + 1] == false) {
+			q.push(QItem(p.row, p.col + 1, p.dist + 1));
+			visited[p.row][p.col + 1] = true;
+		}
+	}
+	return -1;
+}
+
 int countedFrames = 0;
 
 //Main loop flag
@@ -300,7 +373,7 @@ struct Snake {
 	int appleY = rand() % 20;
 	void getPos() {
 		std::ifstream in;
-		in.open("src/save.txt");
+		in.open("src/save.txt",std::ios::trunc);
 		for (int i = 0; i < 20; i++) {
 			for (int j = 0; j < 12; j++) {
 				in >> a[i][j];
@@ -329,57 +402,63 @@ struct Snake {
 	}
 	void move()
 	{
+		if (mind == -1) {
+			mind = minDis(a);
+		}
 		a[appleY][appleX] = 10;
 		std::ofstream out;
 		std::ofstream p;
+		int preX = head.posX;
+		int preY = head.posY;
+		int predir = head.cur_dir;
 		if (countedFrames > 12) {
 			if (!PRESSKEY.empty()) head.cur_dir = PRESSKEY.top();
 			switch (head.cur_dir) {
 			case 0:
 				if (head.posX < 11) {
-					a[head.posY][head.posX] = 0;
 					if (a[head.posY][head.posX + 1] == 10) {
 						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						mind = -1;
 						body.push_back(*(newbody));
 						Has_Eaten_Apple = 1;
 					}
-					a[head.posY][head.posX + 1] = 1;
+					head.posX += 1;
 					myTextures["head"].load("src/Snake_head_right.png");
 				}
 				break;
 			case 1:
 				if (head.posX > 0) {
-					a[head.posY][head.posX] = 0;
 					if (a[head.posY][head.posX - 1] == 10) {
 						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						mind = -1;
 						body.push_back(*(newbody));
 						Has_Eaten_Apple = 1;
 					}
-					a[head.posY][head.posX - 1] = 1;
+					head.posX -= 1;
 					myTextures["head"].load("src/Snake_head_left.png");
 				}
 				break;
 			case 2:
 				if (head.posY > 0) {
-					a[head.posY][head.posX] = 0;
 					if (a[head.posY - 1][head.posX] == 10) {
 						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						mind = -1;
 						body.push_back(*(newbody));
 						Has_Eaten_Apple = 1;
 					}
-					a[head.posY - 1][head.posX] = 1;
+					head.posY -= 1;
 					myTextures["head"].load("src/Snake_head_up.png");
 				}
 				break;
 			case 3:
 				if (head.posY < 19) {
-					a[head.posY][head.posX] = 0;
 					if (a[head.posY + 1][head.posX] == 10) {
 						Snake_pos* newbody = new Snake_pos{ head.posX , head.posY , head.cur_dir };
+						mind = -1;
 						body.push_back(*(newbody));
 						Has_Eaten_Apple = 1;
 					}
-					a[head.posY + 1][head.posX] = 1;
+					head.posY += 1;
 					myTextures["head"].load("src/Snake_head_down.png");
 				}
 				break;
@@ -387,7 +466,7 @@ struct Snake {
 				break;
 			}
 			if (Has_Eaten_Apple) {
-				while (a[appleY][appleX] == 1) {
+				while (a[appleY][appleX] != 0) {
 					appleY = rand() % 20;
 					appleX = rand() % 12;
 				}
@@ -400,14 +479,25 @@ struct Snake {
 				}
 			}
 			if (!(body.empty())) {
-				body[body.size() - 1].cur_dir = head.cur_dir;
-				body[body.size() - 1].posX = head.posX;
-				body[body.size() - 1].posY = head.posY;
+				body[body.size() - 1].cur_dir = predir;
+				body[body.size() - 1].posX = preX;
+				body[body.size() - 1].posY = preY;
 			}
+			for (int i = 0; i < 20; i++) {
+				for (int j = 0; j < 12; j++) {
+					a[i][j] = 0;
+				}
+			}
+			for (auto x : body) {
+				a[x.posY][x.posX] = 2;
+			}
+			Has_Eaten_Apple = 0;
+			a[head.posY][head.posX] = 1;
+			a[appleY][appleX] = 10;
 			p.open("src/test.txt");
-			p << body.size() << " ";
+			p << mind << " ";
 			p.close();
-			out.open("src/save.txt");
+			out.open("src/save.txt",std::ios::trunc);
 			for (int i = 0; i < 20; i++) {
 				for (int j = 0; j < 12; j++) out << a[i][j] << " ";
 				out << '\n';
