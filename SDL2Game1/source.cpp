@@ -14,10 +14,12 @@ and may not be redistributed without written permission.*/
 #include <cstdlib>
 #include <stack>
 #include <queue>
-#include<cmath>
+#include <ctime>
+#include <cmath>
 //supporting function for scoring
 int mind = -1;
-int curTime = SDL_GetTicks();
+clock_t cur_time = clock();
+int TotalTime = 60;
 class QItem {
 public:
 	int row;
@@ -91,14 +93,12 @@ int minDis(int grid[20][12])
 	return -1;
 }
 
-int countedFrames = 0;
-
 //Main loop flag
 bool quit = false;
 
 //Global variables
 TTF_Font* gFont = NULL;
-SDL_Color textColor = { 0, 0, 0 };
+SDL_Color textColor = { 0, 0, 0 }, EndGameColor = { 240,240,240 };
 int bg = 1;
 bool music = true;
 std::string toggleMusic = "mon";
@@ -218,18 +218,13 @@ gTexture Sheadc;
 gTexture apple;
 gTexture background;
 gTexture playground;
+gTexture boxtime;
 gTexture pve;
 gTexture ex;
 gTexture moff;
 gTexture mon;
 gTexture mainMenu;
-gTexture p1;
-gTexture p2;
-gTexture draw;
-
-
-
-
+gTexture EndGame;
 std::map<std::string, std::pair<int, int>> coorBtn{
 	{"pve",{449,250}},
 	{"ex",{449,600}},
@@ -249,6 +244,8 @@ std::map<std::string, gTexture> myTextures = {
 	{"mon", mon },
 	{"moff", moff },
 	{"ex", ex },
+	{"timebox", boxtime },
+	{"EndGame", EndGame },
 	{"playground",playground}
 };
 bool playMusic(std::string path) {
@@ -345,20 +342,6 @@ public:
 		SDL_SetTextureColorMod(mTexture, red, green, blue);
 	}
 
-	//Set blending
-	void setBlendMode(SDL_BlendMode blending)
-	{
-		//Set blending function
-		SDL_SetTextureBlendMode(mTexture, blending);
-	}
-
-	//Set alpha modulation
-	void setAlpha(Uint8 alpha)
-	{
-		//Modulate texture alpha
-		SDL_SetTextureAlphaMod(mTexture, alpha);
-	}
-
 	//Renders texture at given point
 	void render(int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
 	{
@@ -385,14 +368,14 @@ public:
 	{
 		return mHeight;
 	}
-	std::string init(int x)
+	std::string GetNumber(int x,int length)
 	{
 		std::string res="";
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < length; i++) {
 			res += char(x % 10 + '0');
 			x = x / 10;
 		}
-		for (int i = 0; i < 2; i++) std::swap(res[i], res[4 - i]);
+		for (int i = 0; i < length/2; i++) std::swap(res[i], res[length-i-1]);
 		return res;
 	}
 
@@ -404,7 +387,7 @@ private:
 	int mWidth;
 	int mHeight;
 };
-Text tim;
+Text timebox;
 class gBtn {
 public:
 	gBtn() {
@@ -469,8 +452,6 @@ public:
 				case SDL_MOUSEBUTTONDOWN:
 					if (com == "pve" && e->button.button == SDL_BUTTON_LEFT) {
 						bg = 2;
-						tim.points = 60;
-						curTime = SDL_GetTicks();
 							if ((music) && !playMusic("src/ingame.wav")) {
 								printf("Failed to load music!\n");
 							}
@@ -561,6 +542,8 @@ struct Snake {
 	int appleY = rand() % 20;
 	Text Score;
 	int countedStep = 0;
+	int countedFrames = 0;
+	int setSpeed = 13;
 	void getCD() {
 		head.cur_dir = 3;
 	}
@@ -755,41 +738,74 @@ struct Snake {
 		}
 	}
 	Snake(std::string p) : particular(p) {}
+	void free() {
+		body.clear();
+		Score.free();
+	}
 };
 Snake player1("c"), player2("s");
-void background2() {
-	if (SDL_GetTicks() - curTime >= 1000) {
-		--tim.points;
-		curTime = SDL_GetTicks();
+struct GameStatus {
+	bool check = 0;
+	std::string status() {
+		if (player1.lose && !player2.lose) return "p2";
+		if (player2.lose && !player1.lose) return "p1";
+		if (player1.Score.points == player2.Score.points) return "Draw";
+		return (player1.Score.points > player2.Score.points) ? "p1" : "p2";
 	}
+	Text winText;
+};
+GameStatus win;
+void background2() {
+	if (TotalTime == 0) {
+		player1.lose = true;
+		player2.lose = true;
+	}
+	if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1 && !player1.lose && !player2.lose) {
+		cur_time = clock();
+		--TotalTime;
+	}
+	timebox.load(timebox.GetNumber(TotalTime, 3), textColor);
 	myTextures["background"].render(0, 0);
 	myTextures["mainMenu"].render(coorBtn["mainMenu"].first, coorBtn["mainMenu"].second);
 	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
 	myTextures["playground"].render(62,62);
 	myTextures["playground"].render(574, 62);
-	tim.load(tim.init(tim.points), textColor);
-	tim.render(450, 64 - player1.Score.getHeight());
-	player1.Score.load("SCORE : " + player1.Score.init(player1.Score.points), textColor);
+	myTextures["timebox"].render(452, 120);
+	timebox.render(480, 127);
+	player1.Score.load("SCORE : " + player1.Score.GetNumber(player1.Score.points,5), textColor);
 	player1.Score.render(64,64-player1.Score.getHeight());
 	player1.draw();
 	player1.getPos();
-	player2.Score.load("SCORE : " + player1.Score.init(player2.Score.points), textColor);
+	player2.Score.load("SCORE : " + player1.Score.GetNumber(player2.Score.points,5), textColor);
 	player2.Score.render(576, 64 - player2.Score.getHeight());
 	player2.draw();
 	player2.getPos();
-	if (countedFrames > 12) {
-		if (!player1.lose) {
+	if (!(player1.lose)) {
+		if (player1.countedFrames > player1.setSpeed) {
 			player1.move();
+			player1.countedFrames = 0;
 		}
-		if (!player2.lose) {
-			player2.move();
-		}
-
-		countedFrames = 0; 
 	}
-	++countedFrames;
+	else win.check = 1;
+	if (!(player2.lose)) {
+		if (player2.countedFrames > player2.setSpeed) {
+			player2.move();
+			player2.countedFrames = 0;
+		}
+	}
+	else win.check = 1;
+	if (!win.check) {
+		++player2.countedFrames;
+		++player1.countedFrames;
+	}
+	if (win.check) 
+	{
+		myTextures["EndGame"].load("src/" + win.status() + ".png");
+		myTextures["EndGame"].render(512 - myTextures["EndGame"].getWidth() / 2, 384 - myTextures["EndGame"].getHeight() / 2);
+		win.winText.load("Press any keys to continue ...", EndGameColor);
+		win.winText.render(512 - win.winText.getWidth()/2, 550);
+	}
 }
-
 
 bool init()
 {
@@ -855,6 +871,7 @@ bool loadMedia()
 	myTextures["body"].load("src/Snake_body.png");
 	myTextures["background"].load("src/backmap1.png");
 	myTextures["playground"].load("src/playground.png");
+	myTextures["timebox"].load("src/time_box.png");
 	myTextures["pve"].load("src/pve.png");
 	myTextures["ex"].load("src/ex.png");
 	myTextures["mainMenu"].load("src/pvp.png"); // pvp == place holder
@@ -866,13 +883,7 @@ bool loadMedia()
 	//Open the font
 	if (gFont == NULL)
 	{
-		printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
-		success = false;
-	}
-	//Render text
-	if (!player1.Score.load("SCORE : "+player1.Score.init(player1.Score.points), textColor))
-	{
-		printf("Failed to render text texture!\n");
+		printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
 		success = false;
 	}
 	if (!playMusic("src/back.wav")) {
@@ -885,6 +896,11 @@ bool loadMedia()
 		success = false;
 	}
 	if (!myTextures["apple"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["timebox"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -949,8 +965,9 @@ void close()
 {
 
 	// Remove snake
-	player1.body.clear();
-	player1.Score.free();
+	player1.free();
+	player2.free();
+
 
 	//Text destroy
 	TTF_CloseFont(gFont);
@@ -968,8 +985,8 @@ void close()
 	Mix_Quit();
 	IMG_Quit();
 	SDL_Quit();
+	std::remove("src/s.txt");
 }
-
 
 int main(int argc, char* args[])
 {
@@ -1026,8 +1043,11 @@ int main(int argc, char* args[])
 							}
 						}
 						if (e.type == SDL_KEYDOWN) {
-							player1.GetKey(&e);
-							player2.GetKey(&e);
+							if (win.check) bg = 1; else
+							{
+								player1.GetKey(&e);
+								player2.GetKey(&e);
+							}
 							break;
 						}
 					}
@@ -1037,6 +1057,7 @@ int main(int argc, char* args[])
 				SDL_RenderClear(gRenderer);
 				if (bg == 1) {
 					background1();
+					cur_time = clock();
 				}
 				else if (bg == 2) {
 					background2();
