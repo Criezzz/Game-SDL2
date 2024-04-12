@@ -17,6 +17,7 @@ and may not be redistributed without written permission.*/
 #include<cmath>
 //supporting function for scoring
 int mind = -1;
+int curTime = SDL_GetTicks();
 class QItem {
 public:
 	int row;
@@ -223,6 +224,10 @@ gTexture moff;
 gTexture mon;
 gTexture mainMenu;
 gTexture p1;
+gTexture p2;
+gTexture draw;
+
+
 
 
 std::map<std::string, std::pair<int, int>> coorBtn{
@@ -399,6 +404,7 @@ private:
 	int mWidth;
 	int mHeight;
 };
+Text tim;
 class gBtn {
 public:
 	gBtn() {
@@ -463,6 +469,8 @@ public:
 				case SDL_MOUSEBUTTONDOWN:
 					if (com == "pve" && e->button.button == SDL_BUTTON_LEFT) {
 						bg = 2;
+						tim.points = 60;
+						curTime = SDL_GetTicks();
 							if ((music) && !playMusic("src/ingame.wav")) {
 								printf("Failed to load music!\n");
 							}
@@ -750,11 +758,17 @@ struct Snake {
 };
 Snake player1("c"), player2("s");
 void background2() {
+	if (SDL_GetTicks() - curTime >= 1000) {
+		--tim.points;
+		curTime = SDL_GetTicks();
+	}
 	myTextures["background"].render(0, 0);
 	myTextures["mainMenu"].render(coorBtn["mainMenu"].first, coorBtn["mainMenu"].second);
 	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
 	myTextures["playground"].render(62,62);
 	myTextures["playground"].render(574, 62);
+	tim.load(tim.init(tim.points), textColor);
+	tim.render(450, 64 - player1.Score.getHeight());
 	player1.Score.load("SCORE : " + player1.Score.init(player1.Score.points), textColor);
 	player1.Score.render(64,64-player1.Score.getHeight());
 	player1.draw();
