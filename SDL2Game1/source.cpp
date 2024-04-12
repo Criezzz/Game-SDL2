@@ -939,6 +939,7 @@ bool loadMedia()
 	gBtns1[2].getInf("mon");
 	gBtns1[3].getInf("moff");
 
+
 	gBtns2[0].getInf("mainMenu");
 	gBtns2[1].getInf("ex");
 	
