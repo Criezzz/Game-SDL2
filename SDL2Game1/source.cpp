@@ -802,7 +802,7 @@ void background2() {
 	{
 		myTextures["EndGame"].load("src/" + win.status() + ".png");
 		myTextures["EndGame"].render(512 - myTextures["EndGame"].getWidth() / 2, 384 - myTextures["EndGame"].getHeight() / 2);
-		win.winText.load("Press any keys to continue ...", EndGameColor);
+		win.winText.load("Press SPACE to continue ...", EndGameColor);
 		win.winText.render(512 - win.winText.getWidth()/2, 550);
 	}
 }
@@ -1043,7 +1043,10 @@ int main(int argc, char* args[])
 							}
 						}
 						if (e.type == SDL_KEYDOWN) {
-							if (win.check) bg = 1; else
+							if (win.check) {
+								if (e.key.keysym.sym == SDLK_SPACE) bg = 1;
+							}
+							else
 							{
 								player1.GetKey(&e);
 								player2.GetKey(&e);
