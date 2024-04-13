@@ -783,9 +783,20 @@ void background2() {
 		}
 		if (!player2.lose) {
 			player2.move();
+			player2.countedFrames = 0;
 		}
-
-		countedFrames = 0; 
+	}
+	else win.check = 1;
+	if (!win.check) {
+		++player2.countedFrames;
+		++player1.countedFrames;
+	}
+	if (win.check) 
+	{
+		myTextures["EndGame"].load("src/" + win.status() + ".png");
+		myTextures["EndGame"].render(512 - myTextures["EndGame"].getWidth() / 2, 384 - myTextures["EndGame"].getHeight() / 2);
+		win.winText.load("Press any keys to continue ...", EndGameColor);
+		win.winText.render(512 - win.winText.getWidth()/2, 550);
 	}
 	++countedFrames;
 }
@@ -1027,8 +1038,11 @@ int main(int argc, char* args[])
 							}
 						}
 						if (e.type == SDL_KEYDOWN) {
-							player1.GetKey(&e);
-							player2.GetKey(&e);
+							if (win.check) bg = 1; else
+							{
+								player1.GetKey(&e);
+								player2.GetKey(&e);
+							}
 							break;
 						}
 					}
