@@ -64,8 +64,7 @@ int minDis(int grid[20][12])
 			return p.dist;
 
 		// moving up
-		if (p.row - 1 >= 0 &&
-			visited[p.row - 1][p.col] == false) {
+		if (p.row - 1 >= 0 && visited[p.row - 1][p.col] == false) {
 			q.push(QItem(p.row - 1, p.col, p.dist + 1));
 			visited[p.row - 1][p.col] = true;
 		}
@@ -235,6 +234,11 @@ gTexture guide;
 gTexture EndGame;
 gTexture guidebox;
 gTexture X;
+gTexture magicapple; //normal: 0, magic : 1, golden: 2, soil: 3, ice: 4, cherry: 5
+gTexture goldenapple;
+gTexture soilapple;
+gTexture iceapple;
+gTexture cherry;
 std::map<std::string, std::pair<int, int>> coorBtn{
 	{"pause",{449,250}},
 	{"ex",{376,600}},
@@ -249,7 +253,7 @@ std::map<std::string, gTexture> myTextures = {
 	{"body", body },
 	{"headc", Sheadc },
 	{"heads", Sheads },
-	{"apple", apple },
+	{"apple0", apple },
 	{"background", background },
 	{"newgame", newgame },
 	{"resume", resume },
@@ -262,7 +266,12 @@ std::map<std::string, gTexture> myTextures = {
 	{"guide", guidebox },
 	{"EndGame", EndGame },
 	{"X", X },
-	{"playground",playground}
+	{"playground",playground},
+	{"apple1",magicapple},
+	{"apple3",soilapple},
+	{"apple2",goldenapple},
+	{"apple4",iceapple},
+	{"apple5",cherry}
 };
 bool playMusic(std::string path) {
 	if (gMusic != NULL) {
@@ -591,6 +600,7 @@ std::map<int, std::string> dir{
 struct Snake {
 	// Set up snake head 
 	const std::string particular;
+	std::string realKey = "0";
 	int a[20][12];
 	Snake_pos head{ 1,1,3 };
 	std::vector<Snake_pos> body;
@@ -603,7 +613,22 @@ struct Snake {
 	int countedFrames = 0;
 	int setSpeed = 8;
 	bool lose = 0;
+
 	bool gotRead = 0;
+	void randApple() {//random apple with weight apple0 = 50, apple5 = 15, apple3 = 13, apple4 = 10, apple2 = 7, apple1 = 5.
+		int r = rand() % 100;
+		int prob[6] = { 50,15,13,10,7,5 };
+		char aKey;
+		for (int i = 0; i < 6; i++) {
+			if (r < prob[i]) {
+				aKey = i + 48;
+				break;
+			}
+			r -= prob[i];
+		}
+		realKey = "";
+		realKey += aKey;
+	}
 	void getPos() {
 		std::ifstream in;
 		in.open("src/" + particular + ".txt", std::ios::trunc);
@@ -627,12 +652,14 @@ struct Snake {
 		in.close();
 	}
 	void draw() {
+		
+		
 		if (lose) myTextures["head" + particular].load("src/Dead_head_" + dir[head.cur_dir] + ".png");
 		for (auto c : body) {
 			myTextures["body"].render(c.posX * 32 + (particular[0] - 'a') * 32, c.posY * 32 + 64);
 		}
 		myTextures["head" + particular].render(head.posX * 32 + (particular[0] - 'a') * 32, head.posY * 32 + 64);
-		myTextures["apple"].render(appleX * 32 + (particular[0] - 'a') * 32, appleY * 32 + 64);
+		myTextures["apple"+realKey].render(appleX * 32 + (particular[0] - 'a') * 32, appleY * 32 + 64);
 	}
 	void move()
 	{
@@ -685,6 +712,7 @@ struct Snake {
 			break;
 		}
 		if (Has_Eaten_Apple) {
+			randApple();
 			Score.points += (100 * mind) / countedStep + mind;
 			while (a[appleY][appleX] != 0) {
 				appleY = rand() % 20;
@@ -991,7 +1019,7 @@ bool loadMedia()
 	gFont = TTF_OpenFont("src/snake.ttf", 28);
 	myTextures["headc"].load("src/Snake_head_down.png");
 	myTextures["heads"].load("src/Snake_head_down.png");
-	myTextures["apple"].load("src/apple.png");
+	myTextures["apple0"].load("src/apple.png");
 	myTextures["body"].load("src/Snake_body.png");
 	myTextures["background"].load("src/backmap1.png");
 	myTextures["playground"].load("src/playground.png");
@@ -1005,6 +1033,11 @@ bool loadMedia()
 	myTextures["mon"].load("src/mon.png");
 	myTextures["guidebox"].load("src/guidebox.png");
 	myTextures["X"].load("src/X.png");
+	myTextures["apple1"].load("src/magicapple.png");
+	myTextures["apple4"].load("src/iceapple.png");
+	myTextures["apple2"].load("src/goldenapple.png");
+	myTextures["apple3"].load("src/soilapple.png");
+	myTextures["apple5"].load("src/cherry.png");
 	//Loading success flag
 	bool success = true;
 	//Open the font
@@ -1012,6 +1045,28 @@ bool loadMedia()
 	if (gFont == NULL)
 	{
 		printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
+		success = false;
+	}
+	if (!myTextures["apple1"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["apple2"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}if (!myTextures["apple3"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}if (!myTextures["apple4"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}if (!myTextures["apple5"].check())
+	{
+		printf("Failed to load texture image!\n");
 		success = false;
 	}
 	if (!myTextures["guide"].check())
@@ -1048,7 +1103,7 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	if (!myTextures["apple"].check())
+	if (!myTextures["apple0"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
