@@ -17,7 +17,6 @@ and may not be redistributed without written permission.*/
 #include <ctime>
 #include <cmath>
 //supporting function for scoring
-int mind = -1;
 clock_t cur_time = clock();
 int TotalTime = 60;
 class QItem {
@@ -234,11 +233,12 @@ gTexture guide;
 gTexture EndGame;
 gTexture guidebox;
 gTexture X;
-gTexture magicapple; //normal: 0, magic : 1, golden: 2, soil: 3, ice: 4, cherry: 5
+gTexture magicapple; 
 gTexture goldenapple;
-gTexture soilapple;
+gTexture wallapple;
 gTexture iceapple;
 gTexture cherry;
+gTexture wall;
 std::map<std::string, std::pair<int, int>> coorBtn{
 	{"pause",{449,250}},
 	{"ex",{376,600}},
@@ -268,9 +268,10 @@ std::map<std::string, gTexture> myTextures = {
 	{"X", X },
 	{"playground",playground},
 	{"apple1",magicapple},
-	{"apple3",soilapple},
+	{"apple3",wallapple},
 	{"apple2",goldenapple},
 	{"apple4",iceapple},
+	{"wall",wall},
 	{"apple5",cherry}
 };
 bool playMusic(std::string path) {
@@ -540,7 +541,8 @@ public:
 					}
 
 					break;
-
+				default:
+					break;
 					/*case SDL_MOUSEBUTTONUP:
 
 						break;*/
@@ -597,6 +599,11 @@ std::map<int, std::string> dir{
 	{2,"up"},
 	{3,"down"}
 };
+struct Swall {
+	int posX;
+	int posY;
+	Swall(int x, int y) : posX(x), posY(y) {};
+};
 struct Snake {
 	// Set up snake head 
 	const std::string particular;
@@ -604,21 +611,26 @@ struct Snake {
 	int a[20][12];
 	Snake_pos head{ 1,1,3 };
 	std::vector<Snake_pos> body;
+	std::vector<Swall> wall;
 	std::stack<int> PRESSKEY;
 	bool Has_Eaten_Apple = 0;
-	int appleX = rand() % 12;
-	int appleY = rand() % 20;
+	int appleX = 10;
+	int appleY = 10;
 	Text Score;
 	int countedStep = 0;
 	int countedFrames = 0;
-	int setSpeed = 8;
+	int setSpeed = 10;
 	bool lose = 0;
-
+	int mind = -1;
 	bool gotRead = 0;
-	void randApple() {//random apple with weight apple0 = 50, apple5 = 15, apple3 = 13, apple4 = 10, apple2 = 7, apple1 = 5.
+	int stun = 0;
+	int countwall = 0;
+	void randApple() {
+		//normal: 0, magic : 1, golden: 2, wall: 3, ice: 4, cherry: 5
+		// prob 0 : 30   magic:20   golden:5   wall:15   ice:15   cherry: 15
 		int r = rand() % 100;
-		int prob[6] = { 50,15,13,10,7,5 };
-		char aKey;
+		int prob[6] = { 30,20,5,15,15,15 };
+		char aKey = '0';
 		for (int i = 0; i < 6; i++) {
 			if (r < prob[i]) {
 				aKey = i + 48;
@@ -652,11 +664,12 @@ struct Snake {
 		in.close();
 	}
 	void draw() {
-		
-		
 		if (lose) myTextures["head" + particular].load("src/Dead_head_" + dir[head.cur_dir] + ".png");
 		for (auto c : body) {
 			myTextures["body"].render(c.posX * 32 + (particular[0] - 'a') * 32, c.posY * 32 + 64);
+		}
+		for (auto c : wall) {
+			myTextures["wall"].render(c.posX * 32 + (particular[0] - 'a') * 32 + 1, c.posY * 32 + 65);
 		}
 		myTextures["head" + particular].render(head.posX * 32 + (particular[0] - 'a') * 32, head.posY * 32 + 64);
 		myTextures["apple"+realKey].render(appleX * 32 + (particular[0] - 'a') * 32, appleY * 32 + 64);
@@ -675,23 +688,20 @@ struct Snake {
 		switch (head.cur_dir) {
 		case 0:
 			++head.posX;
-			myTextures["head" + particular].load("src/Snake_head_right.png");
 			break;
 		case 1:
 			--head.posX;
-			myTextures["head" + particular].load("src/Snake_head_left.png");
 			break;
 		case 2:
 			--head.posY;
-			myTextures["head" + particular].load("src/Snake_head_up.png");
 			break;
 		case 3:
 			++head.posY;
-			myTextures["head" + particular].load("src/Snake_head_down.png");
 			break;
 		default:
 			break;
 		}
+		myTextures["head" + particular].load("src/Snake_head_"+dir[head.cur_dir]+".png");
 		if (head.posY == 20 || head.posY == -1 || head.posX == -1 || head.posX == 12) {
 			lose = true;
 			head.cur_dir = predir;
@@ -704,24 +714,54 @@ struct Snake {
 				head.posX = preX;
 				head.posY = preY;
 				head.cur_dir = predir;
-
 			}
 			break;
 		case 10:
 			Has_Eaten_Apple = 1;
 			break;
+		default:
+			break;
 		}
 		if (Has_Eaten_Apple) {
-			randApple();
-			Score.points += (100 * mind) / countedStep + mind;
-			while (a[appleY][appleX] != 0) {
-				appleY = rand() % 20;
-				appleX = rand() % 12;
+			if(realKey[0] == '1')
+			{
+				int temp = rand() % 3;
+				std::string t;
+				t += char(temp + '3');
+				realKey = t;
+			}
+			switch (realKey[0]){
+			case '0':
+				Score.points += 100 * mind / countedStep + mind;
+				break;
+			case '2':
+				if (setSpeed > 4)
+				{
+					Score.points *= 2;
+					setSpeed -= 4;
+				}
+				break;
+			case '3':
+				countwall = rand() % 3 + 1;
+				break;
+			case '4':
+				stun = 5;
+				break;
+			case '5':
+				Score.points += (100 * mind / countedStep + mind) * 2;
+				break;
+			default:
+				break;
 			}
 			Snake_pos* newbody = new Snake_pos{ preX , preY , predir };
 			mind = -1;
 			body.push_back(*(newbody));
 			countedStep = 0;
+			randApple();
+			while (a[appleY][appleX] != 0) {
+				appleY = rand() % 20;
+				appleX = rand() % 12;
+			}
 		}
 		if (!lose)
 		{
@@ -746,6 +786,9 @@ struct Snake {
 		for (auto x : body) {
 			a[x.posY][x.posX] = 2;
 		}
+		for (auto c : wall) {
+			a[c.posY][c.posX] = 2;
+		}
 		Has_Eaten_Apple = 0;
 		a[head.posY][head.posX] = 1;
 		a[appleY][appleX] = 10;
@@ -755,11 +798,7 @@ struct Snake {
 			out << '\n';
 		}
 		out.close();
-		while (!PRESSKEY.empty()) {
-			PRESSKEY.pop();
-		}
 		countedStep++;
-
 	}
 	void GetKey(SDL_Event* e) {
 		switch (e->type)
@@ -791,6 +830,8 @@ struct Snake {
 					}
 					break;
 				}
+				default:
+					break;
 			}
 			else {
 				switch (e->key.keysym.sym) {
@@ -823,12 +864,23 @@ struct Snake {
 	}
 	Snake(std::string p) : particular(p) {}
 	void newGame() {
+		wall.clear();
 		body.clear();
 		lose = 0;
 		Score.points = 0;
 		head.posX = 1;
 		head.posY = 1;
 		head.cur_dir = 3;
+		appleX = 10;
+		appleY = 10;
+		a[10][10] = 10;
+		realKey = "0";
+		countedFrames = 0;
+		countedStep = 0;
+		mind = -1;
+		setSpeed = 10;
+		countwall = 0;
+		stun = 0;
 		myTextures["head" + particular].load("src/Snake_head_" + dir[head.cur_dir] + ".png");
 		for (int i = 0; i < 20; i++) {
 			for (int j = 0; j < 12; j++) {
@@ -837,6 +889,7 @@ struct Snake {
 		}
 	}
 	void free() {
+		wall.clear();
 		body.clear();
 		Score.free();
 	}
@@ -845,10 +898,13 @@ struct Snake {
 		o.open("src/" + particular + "save.txt", std::ios::trunc);
 		o << head.posX << " " << head.posY << " " << head.cur_dir << '\n';
 		o << appleX << " " << appleY << '\n';
-		o << countedFrames << " " << countedStep << " " << setSpeed <<" "<<TotalTime<< '\n';
+		o << countedFrames << " " << countedStep << " " << setSpeed <<" "<<TotalTime<<" "<<mind<<" "<<realKey<<" "<<stun<<'\n';
 		o << body.size() << '\n';
 		for (auto c : body)
 			o << c.posX << " " << c.posY << " " << c.cur_dir << '\n';
+		o << wall.size() << '\n';
+		for (auto c : wall)
+			o << c.posX << " " << c.posY << '\n';
 		o << Score.points;
 		o.close();
 	}
@@ -856,13 +912,19 @@ struct Snake {
 		std::ifstream r;
 		r.open("src/" + particular + "save.txt"); 
 		r >> head.posX >> head.posY >> head.cur_dir;
-		r >> appleX >> appleY >> countedFrames >> countedStep >> setSpeed >> TotalTime;
+		r >> appleX >> appleY >> countedFrames >> countedStep >> setSpeed >> TotalTime >> mind >> realKey >> stun;
 		Snake_pos temp(0,0,0);
 		int s;
 		r >> s;
 		for (int i = 0; i < s; i++) {
 			r >> temp.posX >> temp.posY >> temp.cur_dir;
 			body.push_back(temp);
+		}
+		Swall wtemp(0, 0);
+		r >> s;
+		for (int i = 0; i < s; i++) {
+			r >> wtemp.posX >> wtemp.posY;
+			wall.push_back(wtemp);
 		}
 		r >> Score.points;
 		r.close();
@@ -876,6 +938,28 @@ std::string GameStatus::status() {
 	return (player1.Score.points > player2.Score.points) ? "p1" : "p2";
 }
 void background2() {
+	for (int i = 0; i < player1.countwall; i++) {
+		int x = rand() % 20;
+		int y = rand() % 12;
+		while (player2.a[x][y] != 0) {
+			x = rand() % 20;
+			y = rand() % 12;
+		}
+		Swall* newwall = new Swall{ y,x };
+		player2.wall.push_back(*(newwall));
+	}
+	player1.countwall = 0;
+	for (int i = 0; i < player2.countwall; i++) {
+		int x = rand() % 20;
+		int y = rand() % 12;
+		while (player1.a[x][y] != 0) {
+			x = rand() % 20;
+			y = rand() % 12;
+		}
+		Swall* newwall = new Swall{ y,x };
+		player1.wall.push_back(*(newwall));
+	}
+	player2.countwall = 0;
 	if (TotalTime == 0) {
 		player1.lose = true;
 		player2.lose = true;
@@ -902,18 +986,31 @@ void background2() {
 	player2.getPos();
 	if (!(player1.lose)) {
 		if (player1.countedFrames > player1.setSpeed) {
-			player1.move();
+			if(player2.stun > 0)
+			{
+				myTextures["head" + player1.particular].load("src/stunned_" + dir[player1.head.cur_dir] + ".png");
+				--player2.stun;
+			} else player1.move();
 			player1.countedFrames = 0;
 		}
 	}
-	else win.check = 1;
+	else {
+		win.check = 1;
+	}
 	if (!(player2.lose)) {
 		if (player2.countedFrames > player2.setSpeed) {
-			player2.move();
+			if (player1.stun > 0)
+			{
+				--player1.stun;
+				myTextures["head" + player2.particular].load("src/stunned_" + dir[player2.head.cur_dir] + ".png");
+			}
+			else player2.move();
 			player2.countedFrames = 0;
 		}
 	}
-	else win.check = 1;
+	else {
+		win.check = 1;
+	}
 	if (!win.check) {
 		++player2.countedFrames;
 		++player1.countedFrames;
@@ -929,7 +1026,13 @@ void background2() {
 void newGame() {
 	win.check = 0;
 	player1.newGame();
+	while (!player1.PRESSKEY.empty()) {
+		player1.PRESSKEY.pop();
+	}
 	player2.newGame();
+	while (!player2.PRESSKEY.empty()) {
+		player2.PRESSKEY.pop();
+	}
 	TotalTime = 60;
 }
 bool checkSave() {
@@ -1036,8 +1139,9 @@ bool loadMedia()
 	myTextures["apple1"].load("src/magicapple.png");
 	myTextures["apple4"].load("src/iceapple.png");
 	myTextures["apple2"].load("src/goldenapple.png");
-	myTextures["apple3"].load("src/soilapple.png");
+	myTextures["apple3"].load("src/wallapple.png");
 	myTextures["apple5"].load("src/cherry.png");
+	myTextures["wall"].load("src/wall.png");
 	//Loading success flag
 	bool success = true;
 	//Open the font
@@ -1056,7 +1160,13 @@ bool loadMedia()
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
-	}if (!myTextures["apple3"].check())
+	}
+	if (!myTextures["wall"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["apple3"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
