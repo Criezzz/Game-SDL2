@@ -14,16 +14,18 @@ and may not be redistributed without written permission.*/
 #include <cstdlib>
 #include <stack>
 #include <queue>
-#include<cmath>
+#include <ctime>
+#include <cmath>
 //supporting function for scoring
 int mind = -1;
-int curTime = SDL_GetTicks();
+clock_t cur_time = clock();
+int TotalTime = 60;
 class QItem {
 public:
 	int row;
 	int col;
 	int dist;
-	QItem(int x, int y, int w) : row(x), col(y), dist(w){	}
+	QItem(int x, int y, int w) : row(x), col(y), dist(w) {	}
 };
 int minDis(int grid[20][12])
 {
@@ -91,18 +93,16 @@ int minDis(int grid[20][12])
 	return -1;
 }
 
-int countedFrames = 0;
-
 //Main loop flag
 bool quit = false;
 
 //Global variables
 TTF_Font* gFont = NULL;
-SDL_Color textColor = { 0, 0, 0 };
+SDL_Color textColor = { 0, 0, 0 }, EndGameColor = { 240,240,240 };
 int bg = 1;
 bool music = true;
 std::string toggleMusic = "mon";
-const int totalBtn1 = 4;
+const int totalBtn1 = 8;
 const int totalBtn2 = 2;
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
@@ -155,17 +155,17 @@ public:
 	}
 
 	//Loads image at specified path
-	
+
 	//Deallocates texture
 	void free() {
 		// Free texture if it exists
-			if (mTexture != NULL)
-			{
-				SDL_DestroyTexture(mTexture);
-				mTexture = NULL;
-				mWidth = 0;
-				mHeight = 0;
-			}
+		if (mTexture != NULL)
+		{
+			SDL_DestroyTexture(mTexture);
+			mTexture = NULL;
+			mWidth = 0;
+			mHeight = 0;
+		}
 	}
 
 	//Renders texture at given point
@@ -186,7 +186,7 @@ public:
 	void setXA(int x) {
 		xA = x;
 	}
-	
+
 	void setYA(int y) {
 		xA = y;
 	}
@@ -218,25 +218,24 @@ gTexture Sheadc;
 gTexture apple;
 gTexture background;
 gTexture playground;
-gTexture pve;
+gTexture boxtime;
+gTexture pause;
 gTexture ex;
 gTexture moff;
 gTexture mon;
-gTexture mainMenu;
-gTexture p1;
-gTexture p2;
-gTexture draw;
-
-
-
-
+gTexture newgame;
+gTexture resume;
+gTexture guide;
+gTexture EndGame;
 std::map<std::string, std::pair<int, int>> coorBtn{
-	{"pve",{449,250}},
+	{"pause",{449,250}},
 	{"ex",{449,600}},
 	{"mon",{850,600}},
 	{"moff",{850,600}},
-	{"mainMenu",{449,250}},
-	
+	{"newgame",{449,250}},
+	{"resume",{449,370}},
+	{"guide",{449,490}},
+
 };
 std::map<std::string, gTexture> myTextures = {
 	{"body", body },
@@ -244,11 +243,15 @@ std::map<std::string, gTexture> myTextures = {
 	{"heads", Sheads },
 	{"apple", apple },
 	{"background", background },
-	{"mainMenu", mainMenu },
-	{"pve", pve },
+	{"newgame", newgame },
+	{"resume", resume },
+	{"guide", guide },
+	{"pause", pause },
 	{"mon", mon },
 	{"moff", moff },
 	{"ex", ex },
+	{"timebox", boxtime },
+	{"EndGame", EndGame },
 	{"playground",playground}
 };
 bool playMusic(std::string path) {
@@ -345,20 +348,6 @@ public:
 		SDL_SetTextureColorMod(mTexture, red, green, blue);
 	}
 
-	//Set blending
-	void setBlendMode(SDL_BlendMode blending)
-	{
-		//Set blending function
-		SDL_SetTextureBlendMode(mTexture, blending);
-	}
-
-	//Set alpha modulation
-	void setAlpha(Uint8 alpha)
-	{
-		//Modulate texture alpha
-		SDL_SetTextureAlphaMod(mTexture, alpha);
-	}
-
 	//Renders texture at given point
 	void render(int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
 	{
@@ -385,14 +374,14 @@ public:
 	{
 		return mHeight;
 	}
-	std::string init(int x)
+	std::string GetNumber(int x, int length)
 	{
-		std::string res="";
-		for (int i = 0; i < 5; i++) {
+		std::string res = "";
+		for (int i = 0; i < length; i++) {
 			res += char(x % 10 + '0');
 			x = x / 10;
 		}
-		for (int i = 0; i < 2; i++) std::swap(res[i], res[4 - i]);
+		for (int i = 0; i < length / 2; i++) std::swap(res[i], res[length - i - 1]);
 		return res;
 	}
 
@@ -404,7 +393,7 @@ private:
 	int mWidth;
 	int mHeight;
 };
-Text tim;
+Text timebox;
 class gBtn {
 public:
 	gBtn() {
@@ -462,21 +451,29 @@ public:
 				//Set mouse over sprite
 				switch (e->type)
 				{
-				/*case SDL_MOUSEMOTION:
-					
-					break;*/
+					/*case SDL_MOUSEMOTION:
+
+						break;*/
 
 				case SDL_MOUSEBUTTONDOWN:
-					if (com == "pve" && e->button.button == SDL_BUTTON_LEFT) {
+					if (com == "newgame" && e->button.button == SDL_BUTTON_LEFT) {
 						bg = 2;
-						tim.points = 60;
-						curTime = SDL_GetTicks();
-							if ((music) && !playMusic("src/ingame.wav")) {
+						if (music) {
+							if (!playMusic("src/ingame.wav") && music == true) {
 								printf("Failed to load music!\n");
 							}
-						
+						}
 					}
-					else if (com == "mainMenu" && e->button.button == SDL_BUTTON_LEFT ) {
+					else if (com == "resume" && e->button.button == SDL_BUTTON_LEFT) {
+						bg = 2;
+						if (music) {
+							if (!playMusic("src/ingame.wav") && music == true) {
+								printf("Failed to load music!\n");
+							}
+
+						}
+					}
+					else if (com == "pause" && e->button.button == SDL_BUTTON_LEFT) {
 						bg = 1;
 						if (music) {
 							if (!playMusic("src/back.wav") && music == true) {
@@ -503,17 +500,21 @@ public:
 						quit = true;
 					}
 
+					else if (com == "guide" && e->button.button == SDL_BUTTON_LEFT) {
+						bg = 2;
+					}
+
 					break;
 
-				/*case SDL_MOUSEBUTTONUP:
-					
-					break;*/
+					/*case SDL_MOUSEBUTTONUP:
+
+						break;*/
 				}
 			}
 		}
 	}
-	
-private: 
+
+private:
 	SDL_Rect mPos;
 	std::string com;
 };
@@ -524,7 +525,10 @@ gBtn gBtns2[totalBtn2];
 
 void background1() {
 	myTextures["background"].render(0, 0);
-	myTextures["pve"].render(coorBtn["pve"].first, coorBtn["pve"].second);
+
+	myTextures["newgame"].render(coorBtn["newgame"].first, coorBtn["newgame"].second);
+	myTextures["guide"].render(coorBtn["guide"].first, coorBtn["guide"].second);
+	myTextures["resume"].render(coorBtn["resume"].first, coorBtn["resume"].second);
 	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
 	myTextures[toggleMusic].render(coorBtn["mon"].first, coorBtn["mon"].second);
 
@@ -537,7 +541,7 @@ public:
 	// Get direct of snake parts
 	// right = 0, left = 1, up = 2, down = 3
 	int cur_dir;
-	Snake_pos(int x,int y,int z){
+	Snake_pos(int x, int y, int z) {
 		posX = x;
 		posY = y;
 		cur_dir = z;
@@ -561,13 +565,15 @@ struct Snake {
 	int appleY = rand() % 20;
 	Text Score;
 	int countedStep = 0;
+	int countedFrames = 0;
+	int setSpeed = 13;
 	void getCD() {
 		head.cur_dir = 3;
 	}
 	bool lose = 0;
 	void getPos() {
 		std::ifstream in;
-		in.open("src/"+particular+".txt",std::ios::trunc);
+		in.open("src/" + particular + ".txt", std::ios::trunc);
 		for (int i = 0; i < 20; i++) {
 			for (int j = 0; j < 12; j++) {
 				in >> a[i][j];
@@ -586,14 +592,14 @@ struct Snake {
 			}
 		}
 		in.close();
-	} 
-	void draw(){
-		if (lose) myTextures["head"+particular].load("src/Dead_head_" + dir[head.cur_dir]+".png");
+	}
+	void draw() {
+		if (lose) myTextures["head" + particular].load("src/Dead_head_" + dir[head.cur_dir] + ".png");
 		for (auto c : body) {
 			myTextures["body"].render(c.posX * 32 + (particular[0] - 'a') * 32, c.posY * 32 + 64);
 		}
-			myTextures["head"+particular].render(head.posX * 32 + (particular[0] - 'a')*32, head.posY * 32 + 64);
-			myTextures["apple"].render(appleX * 32 + (particular[0] - 'a')*32, appleY * 32 + 64);
+		myTextures["head" + particular].render(head.posX * 32 + (particular[0] - 'a') * 32, head.posY * 32 + 64);
+		myTextures["apple"].render(appleX * 32 + (particular[0] - 'a') * 32, appleY * 32 + 64);
 	}
 	void move()
 	{
@@ -605,95 +611,95 @@ struct Snake {
 		int preX = head.posX;
 		int preY = head.posY;
 		int predir = head.cur_dir;
-			if (!PRESSKEY.empty()) head.cur_dir = PRESSKEY.top();
-			switch (head.cur_dir) {
-			case 0:
-					++head.posX;
-					myTextures["head"+particular].load("src/Snake_head_right.png");
-				break;
-			case 1:
-					--head.posX;
-					myTextures["head" + particular].load("src/Snake_head_left.png");
-				break;
-			case 2:
-					--head.posY;
-					myTextures["head" + particular].load("src/Snake_head_up.png");
-				break;
-			case 3:
-					++head.posY;
-					myTextures["head" + particular].load("src/Snake_head_down.png");
-				break;
-			default:
-				break;
-			}
-			if (head.posY == 20 || head.posY == -1 || head.posX == -1 || head.posX == 12) {
-				lose = true;
-				head.cur_dir = predir;
-				return;
-			}
-			switch (a[head.posY][head.posX]) {
-			case 2:
-				if (!(head.posY == body[0].posY && head.posX == body[0].posX)) {
-					lose = true;
-					head.posX = preX;
-					head.posY = preY;
-					head.cur_dir = predir;
-
-				}
-				break;
-			case 10:
-				Has_Eaten_Apple = 1;
-				break;
-			}
-			if (Has_Eaten_Apple) {
-				Score.points +=(100*mind)/countedStep + mind;
-				while (a[appleY][appleX] != 0) {
-					appleY = rand() % 20;
-					appleX = rand() % 12;
-				}
-				Snake_pos* newbody = new Snake_pos{ preX , preY , predir };
-				mind = -1;
-				body.push_back(*(newbody));
-				countedStep = 0;
-			}
-			if(!lose) 
-			{
-				if (body.size() > 1 && !Has_Eaten_Apple) {
-					for (int i = 0; i < body.size() - 1; i++) {
-						body[i].cur_dir = body[i + 1].cur_dir;
-						body[i].posX = body[i + 1].posX;
-						body[i].posY = body[i + 1].posY;
-					}
-				}
-				if (!(body.empty())) {
-					body[body.size() - 1].cur_dir = predir;
-					body[body.size() - 1].posX = preX;
-					body[body.size() - 1].posY = preY;
-				}
-			}
-			for (int i = 0; i < 20; i++) {
-				for (int j = 0; j < 12; j++) {
-					a[i][j] = 0;
-				}
-			}
-			for (auto x : body) {
-				a[x.posY][x.posX] = 2;
-			}
-			Has_Eaten_Apple = 0;
-			a[head.posY][head.posX] = 1;
-			a[appleY][appleX] = 10;
-			out.open("src/"+particular+".txt",std::ios::trunc);
-			for (int i = 0; i < 20; i++) {
-				for (int j = 0; j < 12; j++) out << a[i][j] << " ";
-				out << '\n';
-			}
-			out.close();
-			while (!PRESSKEY.empty()) {
-				PRESSKEY.pop();
-			}
-			countedStep++;
-
+		if (!PRESSKEY.empty()) head.cur_dir = PRESSKEY.top();
+		switch (head.cur_dir) {
+		case 0:
+			++head.posX;
+			myTextures["head" + particular].load("src/Snake_head_right.png");
+			break;
+		case 1:
+			--head.posX;
+			myTextures["head" + particular].load("src/Snake_head_left.png");
+			break;
+		case 2:
+			--head.posY;
+			myTextures["head" + particular].load("src/Snake_head_up.png");
+			break;
+		case 3:
+			++head.posY;
+			myTextures["head" + particular].load("src/Snake_head_down.png");
+			break;
+		default:
+			break;
 		}
+		if (head.posY == 20 || head.posY == -1 || head.posX == -1 || head.posX == 12) {
+			lose = true;
+			head.cur_dir = predir;
+			return;
+		}
+		switch (a[head.posY][head.posX]) {
+		case 2:
+			if (!(head.posY == body[0].posY && head.posX == body[0].posX)) {
+				lose = true;
+				head.posX = preX;
+				head.posY = preY;
+				head.cur_dir = predir;
+
+			}
+			break;
+		case 10:
+			Has_Eaten_Apple = 1;
+			break;
+		}
+		if (Has_Eaten_Apple) {
+			Score.points += (100 * mind) / countedStep + mind;
+			while (a[appleY][appleX] != 0) {
+				appleY = rand() % 20;
+				appleX = rand() % 12;
+			}
+			Snake_pos* newbody = new Snake_pos{ preX , preY , predir };
+			mind = -1;
+			body.push_back(*(newbody));
+			countedStep = 0;
+		}
+		if (!lose)
+		{
+			if (body.size() > 1 && !Has_Eaten_Apple) {
+				for (int i = 0; i < body.size() - 1; i++) {
+					body[i].cur_dir = body[i + 1].cur_dir;
+					body[i].posX = body[i + 1].posX;
+					body[i].posY = body[i + 1].posY;
+				}
+			}
+			if (!(body.empty())) {
+				body[body.size() - 1].cur_dir = predir;
+				body[body.size() - 1].posX = preX;
+				body[body.size() - 1].posY = preY;
+			}
+		}
+		for (int i = 0; i < 20; i++) {
+			for (int j = 0; j < 12; j++) {
+				a[i][j] = 0;
+			}
+		}
+		for (auto x : body) {
+			a[x.posY][x.posX] = 2;
+		}
+		Has_Eaten_Apple = 0;
+		a[head.posY][head.posX] = 1;
+		a[appleY][appleX] = 10;
+		out.open("src/" + particular + ".txt", std::ios::trunc);
+		for (int i = 0; i < 20; i++) {
+			for (int j = 0; j < 12; j++) out << a[i][j] << " ";
+			out << '\n';
+		}
+		out.close();
+		while (!PRESSKEY.empty()) {
+			PRESSKEY.pop();
+		}
+		countedStep++;
+
+	}
 	void GetKey(SDL_Event* e) {
 		switch (e->type)
 		{
@@ -755,33 +761,57 @@ struct Snake {
 		}
 	}
 	Snake(std::string p) : particular(p) {}
+	void free() {
+		body.clear();
+		Score.free();
+	}
 };
 Snake player1("c"), player2("s");
-void background2() {
-	if (SDL_GetTicks() - curTime >= 1000) {
-		--tim.points;
-		curTime = SDL_GetTicks();
+struct GameStatus {
+	bool check = 0;
+	std::string status() {
+		if (player1.lose && !player2.lose) return "p2";
+		if (player2.lose && !player1.lose) return "p1";
+		if (player1.Score.points == player2.Score.points) return "Draw";
+		return (player1.Score.points > player2.Score.points) ? "p1" : "p2";
 	}
+	Text winText;
+};
+GameStatus win;
+void background2() {
+	if (TotalTime == 0) {
+		player1.lose = true;
+		player2.lose = true;
+	}
+	if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1 && !player1.lose && !player2.lose) {
+		cur_time = clock();
+		--TotalTime;
+	}
+	timebox.load(timebox.GetNumber(TotalTime, 3), textColor);
 	myTextures["background"].render(0, 0);
-	myTextures["mainMenu"].render(coorBtn["mainMenu"].first, coorBtn["mainMenu"].second);
+	myTextures["pause"].render(coorBtn["pause"].first, coorBtn["pause"].second);
 	myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
-	myTextures["playground"].render(62,62);
+	myTextures["playground"].render(62, 62);
 	myTextures["playground"].render(574, 62);
-	tim.load(tim.init(tim.points), textColor);
-	tim.render(450, 64 - player1.Score.getHeight());
-	player1.Score.load("SCORE : " + player1.Score.init(player1.Score.points), textColor);
-	player1.Score.render(64,64-player1.Score.getHeight());
+	myTextures["timebox"].render(452, 120);
+	timebox.render(480, 127);
+	player1.Score.load("SCORE : " + player1.Score.GetNumber(player1.Score.points, 5), textColor);
+	player1.Score.render(64, 64 - player1.Score.getHeight());
 	player1.draw();
 	player1.getPos();
-	player2.Score.load("SCORE : " + player1.Score.init(player2.Score.points), textColor);
+	player2.Score.load("SCORE : " + player1.Score.GetNumber(player2.Score.points, 5), textColor);
 	player2.Score.render(576, 64 - player2.Score.getHeight());
 	player2.draw();
 	player2.getPos();
-	if (countedFrames > 12) {
-		if (!player1.lose) {
+	if (!(player1.lose)) {
+		if (player1.countedFrames > player1.setSpeed) {
 			player1.move();
+			player1.countedFrames = 0;
 		}
-		if (!player2.lose) {
+	}
+	else win.check = 1;
+	if (!(player2.lose)) {
+		if (player2.countedFrames > player2.setSpeed) {
 			player2.move();
 			player2.countedFrames = 0;
 		}
@@ -791,16 +821,14 @@ void background2() {
 		++player2.countedFrames;
 		++player1.countedFrames;
 	}
-	if (win.check) 
+	if (win.check)
 	{
 		myTextures["EndGame"].load("src/" + win.status() + ".png");
 		myTextures["EndGame"].render(512 - myTextures["EndGame"].getWidth() / 2, 384 - myTextures["EndGame"].getHeight() / 2);
-		win.winText.load("Press any keys to continue ...", EndGameColor);
-		win.winText.render(512 - win.winText.getWidth()/2, 550);
+		win.winText.load("Press SPACE to continue ...", EndGameColor);
+		win.winText.render(512 - win.winText.getWidth() / 2, 550);
 	}
-	++countedFrames;
 }
-
 
 bool init()
 {
@@ -829,7 +857,7 @@ bool init()
 			success = false;
 		}
 		else
-		{	
+		{
 			//Initialize renderer color
 			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 
@@ -842,7 +870,7 @@ bool init()
 			}
 			//Initialize SDL_mixer
 			if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
-			{	
+			{
 				printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
 				success = false;
 			}
@@ -866,24 +894,42 @@ bool loadMedia()
 	myTextures["body"].load("src/Snake_body.png");
 	myTextures["background"].load("src/backmap1.png");
 	myTextures["playground"].load("src/playground.png");
-	myTextures["pve"].load("src/pve.png");
+	myTextures["timebox"].load("src/time_box.png");
 	myTextures["ex"].load("src/ex.png");
-	myTextures["mainMenu"].load("src/pvp.png"); // pvp == place holder
+	myTextures["newgame"].load("src/newgame.png");
+	myTextures["resume"].load("src/resume.png");
+	myTextures["guide"].load("src/guide.png");
+	myTextures["pause"].load("src/pause.png");
 	myTextures["moff"].load("src/moff.png");
 	myTextures["mon"].load("src/mon.png");
 
 	//Loading success flag
 	bool success = true;
 	//Open the font
+
 	if (gFont == NULL)
 	{
-		printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
+		printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
 		success = false;
 	}
-	//Render text
-	if (!player1.Score.load("SCORE : "+player1.Score.init(player1.Score.points), textColor))
+	if (!myTextures["guide"].check())
 	{
-		printf("Failed to render text texture!\n");
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["pause"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["resume"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["newgame"].check())
+	{
+		printf("Failed to load texture image!\n");
 		success = false;
 	}
 	if (!playMusic("src/back.wav")) {
@@ -896,6 +942,11 @@ bool loadMedia()
 		success = false;
 	}
 	if (!myTextures["apple"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["timebox"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -920,11 +971,6 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	if (!myTextures["mainMenu"].check())
-	{
-		printf("Failed to load texture image!\n");
-		success = false;
-	}
 	if (!myTextures["pve"].check())
 	{
 		printf("Failed to load texture image!\n");
@@ -945,15 +991,17 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	gBtns1[0].getInf("pve");
-	gBtns1[1].getInf("ex");
-	gBtns1[2].getInf("mon");
-	gBtns1[3].getInf("moff");
+	gBtns1[0].getInf("newgame");
+	gBtns1[1].getInf("guide");
+	gBtns1[2].getInf("resume");
+	gBtns1[3].getInf("ex");
+	gBtns1[4].getInf("mon");
+	gBtns1[5].getInf("moff");
 
 
-	gBtns2[0].getInf("mainMenu");
+	gBtns2[0].getInf("pause");
 	gBtns2[1].getInf("ex");
-	
+
 	return success;
 }
 
@@ -961,8 +1009,9 @@ void close()
 {
 
 	// Remove snake
-	player1.body.clear();
-	player1.Score.free();
+	player1.free();
+	player2.free();
+
 
 	//Text destroy
 	TTF_CloseFont(gFont);
@@ -980,15 +1029,15 @@ void close()
 	Mix_Quit();
 	IMG_Quit();
 	SDL_Quit();
+	std::remove("src/s.txt");
 }
-
 
 int main(int argc, char* args[])
 {
 
 	//Random generate
 	srand(time(NULL));
-	
+
 	//Start up SDL and create window
 	if (!init())
 	{
@@ -1018,6 +1067,7 @@ int main(int argc, char* args[])
 						quit = true;
 					}
 					if (bg == 1) {
+
 						for (int i = 0; i < totalBtn1; ++i)
 						{
 							int temp = bg;
@@ -1037,9 +1087,12 @@ int main(int argc, char* args[])
 								break;
 							}
 						}
+						if (win.check) {
+							if (e.key.keysym.sym == SDLK_SPACE) bg = 1;
+						}
 						if (e.type == SDL_KEYDOWN) {
-							if (win.check) bg = 1; else
 							{
+
 								player1.GetKey(&e);
 								player2.GetKey(&e);
 							}
@@ -1052,10 +1105,11 @@ int main(int argc, char* args[])
 				SDL_RenderClear(gRenderer);
 				if (bg == 1) {
 					background1();
+					cur_time = clock();
 				}
 				else if (bg == 2) {
 					background2();
-				} 
+				}
 				SDL_RenderPresent(gRenderer);
 			}
 		}
