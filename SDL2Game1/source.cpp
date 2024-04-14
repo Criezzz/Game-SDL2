@@ -241,6 +241,7 @@ gTexture iceapple;
 gTexture cherry;
 gTexture wall;
 gTexture countdown;
+gTexture title;
 std::map<std::string, std::pair<int, int>> coorBtn{
 	{"pause",{449,250}},
 	{"ex",{376,600}},
@@ -274,6 +275,7 @@ std::map<std::string, gTexture> myTextures = {
 	{"apple2",goldenapple},
 	{"apple4",iceapple},
 	{"wall",wall},
+	{"Title",title},
 	{"countdown",countdown},
 	{"apple5",cherry}
 };
@@ -500,6 +502,7 @@ public:
 					else if (com == "resume" && e->button.button == SDL_BUTTON_LEFT) {
 						if(checkSave()) 
 						{
+							start = 0;
 							number = "3";
 							bg = 2;
 							if (music) {
@@ -566,6 +569,7 @@ gBtn gBtns2[totalBtn2];
 
 void background1() {
 	myTextures["background"].render(0, 0);
+	myTextures["Title"].render(512 - myTextures["Title"].getWidth() / 2, 50);
 	if(!showguidebox)
 	{
 		if (checkSave()) {
@@ -629,6 +633,7 @@ struct Snake {
 	bool gotRead = 0;
 	int stun = 0;
 	int countwall = 0;
+	std::string status = "Snake";
 	void randApple() {
 		//normal: 0, magic : 1, golden: 2, wall: 3, ice: 4, cherry: 5
 		// prob 0 : 30   magic:20   golden:5   wall:15   ice:15   cherry: 15
@@ -668,18 +673,20 @@ struct Snake {
 		in.close();
 	}
 	void draw() {
-		if (lose) myTextures["head" + particular].load("src/Dead_head_" + dir[head.cur_dir] + ".png");
+		if (lose) status = "Dead";
 		for (auto c : body) {
 			myTextures["body"].render(c.posX * 32 + (particular[0] - 'a') * 32, c.posY * 32 + 64);
 		}
 		for (auto c : wall) {
 			myTextures["wall"].render(c.posX * 32 + (particular[0] - 'a') * 32 + 1, c.posY * 32 + 65);
 		}
+		myTextures["head" + particular].load("src/" + status + "_head_" + dir[head.cur_dir] + ".png");
 		myTextures["head" + particular].render(head.posX * 32 + (particular[0] - 'a') * 32, head.posY * 32 + 64);
 		myTextures["apple"+realKey].render(appleX * 32 + (particular[0] - 'a') * 32, appleY * 32 + 64);
 	}
 	void move()
 	{
+		status = "Snake";
 		if (mind == -1) {
 			mind = minDis(a);
 		}
@@ -705,7 +712,6 @@ struct Snake {
 		default:
 			break;
 		}
-		myTextures["head" + particular].load("src/Snake_head_"+dir[head.cur_dir]+".png");
 		if (head.posY == 20 || head.posY == -1 || head.posX == -1 || head.posX == 12) {
 			lose = true;
 			head.cur_dir = predir;
@@ -743,6 +749,9 @@ struct Snake {
 				{
 					Score.points *= 2;
 					setSpeed -= 4;
+				}
+				else {
+					Score.points += 100 * mind / countedStep + mind;
 				}
 				break;
 			case '3':
@@ -885,7 +894,7 @@ struct Snake {
 		setSpeed = 10;
 		countwall = 0;
 		stun = 0;
-		myTextures["head" + particular].load("src/Snake_head_" + dir[head.cur_dir] + ".png");
+		status = "Snake";
 		for (int i = 0; i < 20; i++) {
 			for (int j = 0; j < 12; j++) {
 				a[i][j] = 0;
@@ -902,7 +911,7 @@ struct Snake {
 		o.open("src/" + particular + "save.txt", std::ios::trunc);
 		o << head.posX << " " << head.posY << " " << head.cur_dir << '\n';
 		o << appleX << " " << appleY << '\n';
-		o << countedFrames << " " << countedStep << " " << setSpeed <<" "<<TotalTime<<" "<<mind<<" "<<realKey<<" "<<stun<<'\n';
+		o << countedFrames << " " << countedStep << " " << setSpeed <<" "<<TotalTime<<" "<<mind<<" "<<realKey<<" "<<stun<<" "<<status<<'\n';
 		o << body.size() << '\n';
 		for (auto c : body)
 			o << c.posX << " " << c.posY << " " << c.cur_dir << '\n';
@@ -916,7 +925,7 @@ struct Snake {
 		std::ifstream r;
 		r.open("src/" + particular + "save.txt"); 
 		r >> head.posX >> head.posY >> head.cur_dir;
-		r >> appleX >> appleY >> countedFrames >> countedStep >> setSpeed >> TotalTime >> mind >> realKey >> stun;
+		r >> appleX >> appleY >> countedFrames >> countedStep >> setSpeed >> TotalTime >> mind >> realKey >> stun >> status;
 		Snake_pos temp(0,0,0);
 		int s;
 		r >> s;
@@ -1006,7 +1015,7 @@ void background2() {
 			if (player1.countedFrames > player1.setSpeed) {
 				if (player2.stun > 0)
 				{
-					myTextures["head" + player1.particular].load("src/stunned_" + dir[player1.head.cur_dir] + ".png");
+					player1.status = "Stunned";
 					--player2.stun;
 				}
 				else player1.move();
@@ -1021,9 +1030,10 @@ void background2() {
 				if (player1.stun > 0)
 				{
 					--player1.stun;
-					myTextures["head" + player2.particular].load("src/stunned_" + dir[player2.head.cur_dir] + ".png");
+					player2.status = "Stunned";
 				}
-				else player2.move();
+				else 
+					player2.move();
 				player2.countedFrames = 0;
 			}
 		}
@@ -1047,6 +1057,7 @@ void background2() {
 	}
 }
 void newGame() {
+	start = 0;
 	number = "3";
 	win.check = 0;
 	player1.newGame();
@@ -1081,11 +1092,12 @@ bool checkSave() {
 	return 0;
 }
 void createSave() {
-	start = 0;
 	player1.save();
 	player1.gotRead = 0;
+	player1.free();
 	player2.save();
 	player2.gotRead = 0;
+	player2.free();
 }
 bool init()
 {
@@ -1167,6 +1179,7 @@ bool loadMedia()
 	myTextures["apple3"].load("src/wallapple.png");
 	myTextures["apple5"].load("src/cherry.png");
 	myTextures["wall"].load("src/wall.png");
+	myTextures["Title"].load("src/title.png");
 	//Loading success flag
 	bool success = true;
 	//Open the font
@@ -1334,7 +1347,7 @@ void close()
 int main(int argc, char* args[])
 {
 	//Random generate
-	srand(0);
+	srand(time(nullptr));
 
 	//Start up SDL and create window
 	if (!init())
