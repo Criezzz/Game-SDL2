@@ -956,6 +956,7 @@ void CD() {
 	if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1) {
 		number[0]--;
 		cur_time = clock();
+
 	}
 	if (number[0] == '0'-1) {
 		start = 1;
