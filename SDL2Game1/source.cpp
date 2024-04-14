@@ -49,7 +49,6 @@ int minDis(int grid[20][12])
 			}
 		}
 	}
-
 	// applying BFS on matrix cells starting from source
 	std::queue<QItem> q;
 	q.push(source);
@@ -93,6 +92,8 @@ int minDis(int grid[20][12])
 
 //Main loop flag
 bool quit = false;
+bool start = 0;
+std::string number;
 
 //Global variables
 TTF_Font* gFont = NULL;
@@ -239,6 +240,7 @@ gTexture wallapple;
 gTexture iceapple;
 gTexture cherry;
 gTexture wall;
+gTexture countdown;
 std::map<std::string, std::pair<int, int>> coorBtn{
 	{"pause",{449,250}},
 	{"ex",{376,600}},
@@ -272,6 +274,7 @@ std::map<std::string, gTexture> myTextures = {
 	{"apple2",goldenapple},
 	{"apple4",iceapple},
 	{"wall",wall},
+	{"countdown",countdown},
 	{"apple5",cherry}
 };
 bool playMusic(std::string path) {
@@ -497,6 +500,7 @@ public:
 					else if (com == "resume" && e->button.button == SDL_BUTTON_LEFT) {
 						if(checkSave()) 
 						{
+							number = "3";
 							bg = 2;
 							if (music) {
 								if (!playMusic("src/ingame.wav") && music == true) {
@@ -937,39 +941,21 @@ std::string GameStatus::status() {
 	if (player1.Score.points == player2.Score.points) return "Draw";
 	return (player1.Score.points > player2.Score.points) ? "p1" : "p2";
 }
-void background2() {
-	for (int i = 0; i < player1.countwall; i++) {
-		int x = rand() % 20;
-		int y = rand() % 12;
-		while (player2.a[x][y] != 0) {
-			x = rand() % 20;
-			y = rand() % 12;
-		}
-		Swall* newwall = new Swall{ y,x };
-		player2.wall.push_back(*(newwall));
-	}
-	player1.countwall = 0;
-	for (int i = 0; i < player2.countwall; i++) {
-		int x = rand() % 20;
-		int y = rand() % 12;
-		while (player1.a[x][y] != 0) {
-			x = rand() % 20;
-			y = rand() % 12;
-		}
-		Swall* newwall = new Swall{ y,x };
-		player1.wall.push_back(*(newwall));
-	}
-	player2.countwall = 0;
-	if (TotalTime == 0) {
-		player1.lose = true;
-		player2.lose = true;
-	}
-	if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1 && !player1.lose && !player2.lose) {
+void CD() {
+	myTextures["countdown"].load("src/" + number + ".png");
+	myTextures["countdown"].render(512 - myTextures["countdown"].getWidth() / 2, 384 - myTextures["countdown"].getHeight() / 2);
+	if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1) {
+		number[0]--;
 		cur_time = clock();
-		--TotalTime;
 	}
-	timebox.load(timebox.GetNumber(TotalTime, 3), textColor);
+	if (number[0] == '0'-1) {
+		start = 1;
+		cur_time = clock();
+	}
+}
+void background2() {
 	myTextures["background"].render(0, 0);
+	timebox.load(timebox.GetNumber(TotalTime, 3), textColor);
 	if (!win.check)
 		myTextures["pause"].render(coorBtn["pause"].first, coorBtn["pause"].second);
 	myTextures["playground"].render(62, 62);
@@ -984,36 +970,73 @@ void background2() {
 	player2.Score.render(576, 64 - player2.Score.getHeight());
 	player2.draw();
 	player2.getPos();
-	if (!(player1.lose)) {
-		if (player1.countedFrames > player1.setSpeed) {
-			if(player2.stun > 0)
-			{
-				myTextures["head" + player1.particular].load("src/stunned_" + dir[player1.head.cur_dir] + ".png");
-				--player2.stun;
-			} else player1.move();
-			player1.countedFrames = 0;
-		}
-	}
-	else {
-		win.check = 1;
-	}
-	if (!(player2.lose)) {
-		if (player2.countedFrames > player2.setSpeed) {
-			if (player1.stun > 0)
-			{
-				--player1.stun;
-				myTextures["head" + player2.particular].load("src/stunned_" + dir[player2.head.cur_dir] + ".png");
+	if(start)
+	{
+		for (int i = 0; i < player1.countwall; i++) {
+			int x = rand() % 20;
+			int y = rand() % 12;
+			while (player2.a[x][y] != 0) {
+				x = rand() % 20;
+				y = rand() % 12;
 			}
-			else player2.move();
-			player2.countedFrames = 0;
+			Swall* newwall = new Swall{ y,x };
+			player2.wall.push_back(*(newwall));
+		}
+		player1.countwall = 0;
+		for (int i = 0; i < player2.countwall; i++) {
+			int x = rand() % 20;
+			int y = rand() % 12;
+			while (player1.a[x][y] != 0) {
+				x = rand() % 20;
+				y = rand() % 12;
+			}
+			Swall* newwall = new Swall{ y,x };
+			player1.wall.push_back(*(newwall));
+		}
+		player2.countwall = 0;
+		if (TotalTime == 0) {
+			player1.lose = true;
+			player2.lose = true;
+		}
+		if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1 && !player1.lose && !player2.lose) {
+			cur_time = clock();
+			--TotalTime;
+		}
+		if (!(player1.lose)) {
+			if (player1.countedFrames > player1.setSpeed) {
+				if (player2.stun > 0)
+				{
+					myTextures["head" + player1.particular].load("src/stunned_" + dir[player1.head.cur_dir] + ".png");
+					--player2.stun;
+				}
+				else player1.move();
+				player1.countedFrames = 0;
+			}
+		}
+		else {
+			win.check = 1;
+		}
+		if (!(player2.lose)) {
+			if (player2.countedFrames > player2.setSpeed) {
+				if (player1.stun > 0)
+				{
+					--player1.stun;
+					myTextures["head" + player2.particular].load("src/stunned_" + dir[player2.head.cur_dir] + ".png");
+				}
+				else player2.move();
+				player2.countedFrames = 0;
+			}
+		}
+		else {
+			win.check = 1;
+		}
+		if (!win.check) {
+			++player2.countedFrames;
+			++player1.countedFrames;
 		}
 	}
 	else {
-		win.check = 1;
-	}
-	if (!win.check) {
-		++player2.countedFrames;
-		++player1.countedFrames;
+		CD();
 	}
 	if (win.check)
 	{
@@ -1024,6 +1047,7 @@ void background2() {
 	}
 }
 void newGame() {
+	number = "3";
 	win.check = 0;
 	player1.newGame();
 	while (!player1.PRESSKEY.empty()) {
@@ -1057,6 +1081,7 @@ bool checkSave() {
 	return 0;
 }
 void createSave() {
+	start = 0;
 	player1.save();
 	player1.gotRead = 0;
 	player2.save();
@@ -1157,6 +1182,11 @@ bool loadMedia()
 		success = false;
 	}
 	if (!myTextures["apple2"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["countdown"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
