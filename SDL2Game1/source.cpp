@@ -217,6 +217,11 @@ private:
 	int yA;
 };
 //no loadfromfile, we construct by string 
+bool cdMusic = 0;
+Mix_Chunk* NB = NULL;
+Mix_Chunk* eat = NULL;
+Mix_Chunk* GO = NULL;
+Mix_Chunk* click = NULL;
 gTexture body;
 gTexture Sheads;
 gTexture Sheadc;
@@ -492,23 +497,26 @@ public:
 				case SDL_MOUSEBUTTONDOWN:
 					if (com == "newgame" && e->button.button == SDL_BUTTON_LEFT) {
 						bg = 2;
-						if (music) {
-							if (!playMusic("src/ingame.wav") && music == true) {
-								printf("Failed to load music!\n");
-							}
-						}
 						newGame();
+						if (music) {
+							Mix_HaltMusic();
+							Mix_FreeMusic(gMusic);
+							gMusic = NULL;
+
+						}
 					}
 					else if (com == "resume" && e->button.button == SDL_BUTTON_LEFT) {
 						if(checkSave()) 
 						{
 							start = 0;
 							number = "3";
+							cdMusic = 0;
 							bg = 2;
 							if (music) {
-								if (!playMusic("src/ingame.wav") && music == true) {
-									printf("Failed to load music!\n");
-								}
+								Mix_HaltMusic();
+								Mix_FreeMusic(gMusic);
+								gMusic = NULL;
+
 							}
 						} 
 					}
@@ -728,6 +736,7 @@ struct Snake {
 			break;
 		case 10:
 			Has_Eaten_Apple = 1;
+			Mix_PlayChannel(6, eat, 0);
 			break;
 		default:
 			break;
@@ -951,15 +960,30 @@ std::string GameStatus::status() {
 	return (player1.Score.points > player2.Score.points) ? "p1" : "p2";
 }
 void CD() {
+	if (!cdMusic) {
+		if (music && !Mix_Playing(5)) {
+			if(number[0] > '0')
+				Mix_PlayChannel(5, NB, 0); 
+			else
+				Mix_PlayChannel(5, GO, 0);
+		}
+		cdMusic = 1;
+	}
 	myTextures["countdown"].load("src/" + number + ".png");
 	myTextures["countdown"].render(512 - myTextures["countdown"].getWidth() / 2, 384 - myTextures["countdown"].getHeight() / 2);
 	if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1) {
 		number[0]--;
 		cur_time = clock();
+		cdMusic = 0;
 	}
 	if (number[0] == '0'-1) {
 		start = 1;
 		cur_time = clock();
+		if (music) {
+			if (!playMusic("src/ingame.wav") && music == true) {
+				printf("Failed to load music!\n");
+			}
+		}
 	}
 }
 void background2() {
@@ -1046,6 +1070,7 @@ void background2() {
 		}
 	}
 	else {
+
 		CD();
 	}
 	if (win.check)
@@ -1057,6 +1082,7 @@ void background2() {
 	}
 }
 void newGame() {
+	cdMusic = 0;
 	start = 0;
 	number = "3";
 	win.check = 0;
@@ -1138,7 +1164,12 @@ bool init()
 				success = false;
 			}
 			//Initialize SDL_mixer
-			if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+			if (!(Mix_Init(MIX_INIT_MP3) & MIX_INIT_MP3))
+			{
+				printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+				success = false;
+			}
+			if (Mix_OpenAudio(48000, AUDIO_S16SYS, 2, 2048) < 0)
 			{
 				printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
 				success = false;
@@ -1157,6 +1188,10 @@ bool init()
 bool loadMedia()
 {
 	gFont = TTF_OpenFont("src/snake.ttf", 28);
+	GO = Mix_LoadWAV("src/GO.wav");
+	NB = Mix_LoadWAV("src/NB.wav");
+	click = Mix_LoadWAV("src/click.wav");
+	eat = Mix_LoadWAV("src/yummy.wav");
 	myTextures["headc"].load("src/Snake_head_down.png");
 	myTextures["heads"].load("src/Snake_head_down.png");
 	myTextures["apple0"].load("src/apple.png");
@@ -1180,6 +1215,7 @@ bool loadMedia()
 	myTextures["apple5"].load("src/cherry.png");
 	myTextures["wall"].load("src/wall.png");
 	myTextures["Title"].load("src/title.png");
+
 	//Loading success flag
 	bool success = true;
 	//Open the font
@@ -1251,6 +1287,7 @@ bool loadMedia()
 		printf("Failed to load music!\n");
 		success = false;
 	}
+
 	if (!myTextures["body"].check())
 	{
 		printf("Failed to load texture image!\n");
@@ -1377,6 +1414,12 @@ int main(int argc, char* args[])
 					{
 						quit = true;
 					}
+					if (e.type == SDL_MOUSEBUTTONDOWN) {
+						if (music) {
+							Mix_PlayChannel(-1, click, 0);
+
+						}
+					}
 					if (bg == 1) {
 						if (!showguidebox) {
 							for (int i = 0; i < 6; ++i)
@@ -1408,6 +1451,12 @@ int main(int argc, char* args[])
 						if (win.check) {
 							if (e.key.keysym.sym == SDLK_SPACE) 
 							{
+								if (music) {
+									if (!playMusic("src/back.wav") && music == true) {
+										printf("Failed to load music!\n");
+									}
+
+								}
 								bg = 1;
 								std::remove("src/ssave.txt");
 								std::remove("src/csave.txt");
@@ -1420,7 +1469,9 @@ int main(int argc, char* args[])
 							}
 							break;
 						}
+						
 					}
+					
 				}
 				//Clear screen (background -> color in gRenderer) (giong nhu xoa background)
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
