@@ -18,7 +18,8 @@ and may not be redistributed without written permission.*/
 #include <cmath>
 //supporting function for scoring
 clock_t cur_time = clock();
-int TotalTime = 60;
+int TotalTimeSetting = 60;
+int TotalTime = TotalTimeSetting;
 class QItem {
 public:
 	int row;
@@ -99,14 +100,19 @@ std::string number;
 TTF_Font* gFont = NULL;
 SDL_Color textColor = { 0, 0, 0 }, EndGameColor = { 240,240,240 };
 int bg = 1;
-bool music = true;
-std::string toggleMusic = "mon";
 bool showguidebox = 0;
+bool showsettingbox = 0;
 const int totalBtn1 = 8;
 const int totalBtn2 = 2;
+const int totalSBtn = 12;
+const int totalskin = 8;
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
 bool init();
+std::string operator+(std::string s, char c) {
+	s += c;
+	return s;
+}
 
 //Loads media
 bool loadMedia();
@@ -204,7 +210,9 @@ public:
 		//Set blending function
 		SDL_SetTextureBlendMode(mTexture, blending);
 	}
-
+	void setColor(int x, int y, int z) {
+		SDL_SetTextureColorMod(mTexture, x, y, z);
+	}
 private:
 	//The actual hardware texture
 	SDL_Texture* mTexture;
@@ -222,23 +230,28 @@ Mix_Chunk* NB = NULL;
 Mix_Chunk* eat = NULL;
 Mix_Chunk* GO = NULL;
 Mix_Chunk* click = NULL;
-gTexture body;
+gTexture Sbodys;
+gTexture Sbodyc;
 gTexture Sheads;
 gTexture Sheadc;
+gTexture preheadc;
+gTexture prebodyc;
+gTexture preheads;
+gTexture prebodys;
 gTexture apple;
 gTexture background;
 gTexture playground;
 gTexture boxtime;
 gTexture pause;
 gTexture ex;
-gTexture moff;
-gTexture mon;
 gTexture newgame;
 gTexture resume;
 gTexture guide;
 gTexture EndGame;
 gTexture guidebox;
+gTexture settingbox;
 gTexture X;
+gTexture Sbutton;
 gTexture magicapple; 
 gTexture goldenapple;
 gTexture wallapple;
@@ -247,28 +260,43 @@ gTexture cherry;
 gTexture wall;
 gTexture countdown;
 gTexture title;
+gTexture settingbutton;
 std::map<std::string, std::pair<int, int>> coorBtn{
 	{"pause",{449,250}},
 	{"ex",{376,600}},
-	{"mon",{850,600}},
-	{"moff",{850,600}},
 	{"newgame",{376,235}},
 	{"resume",{376,355}},
 	{"guide",{376,475}},
-	{"X",{872,185}},
+	{"setting",{688,600}},
+	{"X",{872,215}},
 };
 std::map<std::string, gTexture> myTextures = {
-	{"body", body },
+	{"bodys", Sbodys },
+	{"bodyc", Sbodyc },
 	{"headc", Sheadc },
 	{"heads", Sheads },
+	{"preheadP1", preheadc },
+	{"prebodyP1", prebodyc },
+	{"preheadP2", preheads },
+	{"prebodyP2", prebodys },
 	{"apple0", apple },
 	{"background", background },
+	{"MusicLeft", Sbutton},
+	{"MusicRight", Sbutton},
+	{"SFXLeft", Sbutton},
+	{"SFXRight", Sbutton},
+	{"TimeLeft", Sbutton},
+	{"TimeRight", Sbutton},
+	{"FSLeft", Sbutton},
+	{"FSRight", Sbutton},
+	{"P1Left", Sbutton},
+	{"P1Right", Sbutton},
+	{"P2Left", Sbutton},
+	{"P2Right", Sbutton},
 	{"newgame", newgame },
 	{"resume", resume },
 	{"guide", guide },
 	{"pause", pause },
-	{"mon", mon },
-	{"moff", moff },
 	{"ex", ex },
 	{"timebox", boxtime },
 	{"guide", guidebox },
@@ -282,6 +310,8 @@ std::map<std::string, gTexture> myTextures = {
 	{"wall",wall},
 	{"Title",title},
 	{"countdown",countdown},
+	{"setting",settingbutton},
+	{"settingbox",settingbox},
 	{"apple5",cherry}
 };
 bool playMusic(std::string path) {
@@ -371,12 +401,6 @@ public:
 		}
 	}
 
-	//Set color modulation
-	void setColor(Uint8 red, Uint8 green, Uint8 blue)
-	{
-		//Modulate texture rgb
-		SDL_SetTextureColorMod(mTexture, red, green, blue);
-	}
 
 	//Renders texture at given point
 	void render(int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
@@ -428,8 +452,31 @@ struct GameStatus {
 	std::string status(); 
 	Text winText;
 };
+std::string NBtoS(int x) {
+	std::string res = "";
+	for (int i = 0; i < 5; i++) {
+		res += char(x % 10 + '0');
+		x = x / 10;
+	}
+	while (res.length()>0 && res[res.length() - 1] == '0') res.pop_back();
+	for (int i = 0; i < res.length() / 2; i++) std::swap(res[i], res[res.length() - i - 1]);
+	return (res=="") ? "0" : res;
+}
 GameStatus win;
 Text timebox;
+Text percentMusic;
+int percentMusicNum = 100;
+Text percentSFX;
+int percentSFXNum = 100;
+void SFXchange(int x) {
+	Mix_VolumeChunk(eat, x);
+	Mix_VolumeChunk(NB, x);
+	Mix_VolumeChunk(GO, x);
+	Mix_VolumeChunk(click, x);
+}
+bool FScreen = 0;
+Text Time;
+Text FullScreen;
 void newGame();
 bool checkSave();
 void createSave();
@@ -442,130 +489,21 @@ public:
 		mPos.h = 0;
 		com = "";
 	}
-	void getInf(std::string temp) {
-		mPos.x = coorBtn[temp].first;
-		mPos.y = coorBtn[temp].second;
+	void getInf(std::string temp, int x = -1, int y = -1) {
+		if(x == -1)
+		{
+			mPos.x = coorBtn[temp].first;
+			mPos.y = coorBtn[temp].second;
+		}
+		else {
+			mPos.x = x;
+			mPos.y = y;
+		}
 		mPos.w = myTextures[temp].getWidth();
 		mPos.h = myTextures[temp].getHeight();
 		com = temp;
 	}
-	void handleEvent(SDL_Event* e)
-	{
-		if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
-		{
-			//Get mouse position
-			int x, y;
-			SDL_GetMouseState(&x, &y);
-			//Check if mouse is in button
-			bool inside = true;
-
-			//Mouse is left of the button
-			if (x < mPos.x)
-			{
-				inside = false;
-			}
-			//Mouse is right of the button
-			else if (x > mPos.x + mPos.w)
-			{
-				inside = false;
-			}
-			//Mouse above the button
-			else if (y < mPos.y)
-			{
-				inside = false;
-			}
-			//Mouse below the button
-			else if (y > mPos.y + mPos.h)
-			{
-				inside = false;
-			}
-			//Mouse is outside button
-			if (!inside)
-			{
-				//place holder
-			}
-			//Mouse is inside button
-			else
-			{
-				//Set mouse over sprite
-				switch (e->type)
-				{
-					/*case SDL_MOUSEMOTION:
-
-						break;*/
-
-				case SDL_MOUSEBUTTONDOWN:
-					if (com == "newgame" && e->button.button == SDL_BUTTON_LEFT) {
-						bg = 2;
-						newGame();
-						if (music) {
-							Mix_HaltMusic();
-							Mix_FreeMusic(gMusic);
-							gMusic = NULL;
-
-						}
-					}
-					else if (com == "resume" && e->button.button == SDL_BUTTON_LEFT) {
-						if(checkSave()) 
-						{
-							start = 0;
-							number = "3";
-							cdMusic = 0;
-							bg = 2;
-							if (music) {
-								Mix_HaltMusic();
-								Mix_FreeMusic(gMusic);
-								gMusic = NULL;
-
-							}
-						} 
-					}
-					else if (com == "X" && e->button.button == SDL_BUTTON_LEFT) {
-						showguidebox = 0;
-					}
-					else if (com == "pause" && e->button.button == SDL_BUTTON_LEFT) {
-						createSave();
-						if(!win.check) bg = 1;
-						if (music) {
-							if (!playMusic("src/back.wav") && music == true) {
-								printf("Failed to load music!\n");
-							}
-
-						}
-					}
-					else if (com == "mon" && e->button.button == SDL_BUTTON_LEFT) {
-						if (music == true) {
-							music = false;
-							Mix_Pause(-1);
-							Mix_PauseMusic();
-							toggleMusic = "moff";
-						}
-						else {
-							music = true;
-							Mix_Resume(-1);
-							Mix_ResumeMusic();
-							toggleMusic = "mon";
-						}
-					}
-					else if (com == "ex" && e->button.button == SDL_BUTTON_LEFT) {
-						quit = true;
-					}
-
-					else if (com == "guide" && e->button.button == SDL_BUTTON_LEFT) {
-						showguidebox = 1;
-					}
-
-					break;
-				default:
-					break;
-					/*case SDL_MOUSEBUTTONUP:
-
-						break;*/
-				}
-			}
-		}
-	}
-
+	void handleEvent(SDL_Event* e);
 private:
 	SDL_Rect mPos;
 	std::string com;
@@ -574,25 +512,41 @@ private:
 
 gBtn gBtns1[totalBtn1];
 gBtn gBtns2[totalBtn2];
+gBtn SBT[totalSBtn];
 
 void background1() {
 	myTextures["background"].render(0, 0);
 	myTextures["Title"].render(512 - myTextures["Title"].getWidth() / 2, 50);
-	if(!showguidebox)
-	{
-		if (checkSave()) {
-			myTextures["resume"].setBlendMode(SDL_BLENDMODE_BLEND);
-		}
-		else myTextures["resume"].setBlendMode(SDL_BLENDMODE_MUL);
-		myTextures["newgame"].render(coorBtn["newgame"].first, coorBtn["newgame"].second);
-		myTextures["guide"].render(coorBtn["guide"].first, coorBtn["guide"].second);
-		myTextures["resume"].render(coorBtn["resume"].first, coorBtn["resume"].second);
-		myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
-		myTextures[toggleMusic].render(coorBtn["mon"].first, coorBtn["mon"].second);
+	if (showguidebox) {
+		myTextures["guidebox"].render(512 - myTextures["guidebox"].getWidth() / 2, 384 - myTextures["guidebox"].getHeight() / 2 + 35);
 	}
 	else {
-		myTextures["guidebox"].render(512 - myTextures["guidebox"].getWidth() / 2, 384 - myTextures["guidebox"].getHeight() / 2);
-		gBtns1[6].getInf("X");
+		if (showsettingbox) {
+			percentMusic.load(NBtoS(percentMusicNum) + "%", textColor);
+			percentSFX.load(NBtoS(percentSFXNum) + "%", textColor);
+			Time.load(NBtoS(TotalTimeSetting), textColor);
+			FullScreen.load((FScreen) ? "on" : "off", textColor);
+			myTextures["settingbox"].render(512 - myTextures["settingbox"].getWidth() / 2, 384 - myTextures["settingbox"].getHeight() / 2 + 35);
+			percentMusic.render(400 - percentMusic.getWidth() / 2, 258);
+			percentSFX.render(785 - percentSFX.getWidth() / 2, 258);
+			Time.render(400 - Time.getWidth() / 2, 358);
+			FullScreen.render(785 - FullScreen.getWidth() / 2, 358);
+			myTextures["preheadP1"].render(320, 531);
+			myTextures["prebodyP1"].render(288, 531);
+			myTextures["preheadP2"].render(704, 531);
+			myTextures["prebodyP2"].render(672, 531);
+		}
+		else {
+			if (checkSave()) {
+				myTextures["resume"].setBlendMode(SDL_BLENDMODE_BLEND);
+			}
+			else myTextures["resume"].setBlendMode(SDL_BLENDMODE_MUL);
+			myTextures["newgame"].render(coorBtn["newgame"].first, coorBtn["newgame"].second);
+			myTextures["setting"].render(coorBtn["setting"].first, coorBtn["setting"].second);
+			myTextures["guide"].render(coorBtn["guide"].first, coorBtn["guide"].second);
+			myTextures["resume"].render(coorBtn["resume"].first, coorBtn["resume"].second);
+			myTextures["ex"].render(coorBtn["ex"].first, coorBtn["ex"].second);
+		}
 	}
 }
 class Snake_pos {
@@ -614,6 +568,17 @@ std::map<int, std::string> dir{
 	{1,"left"},
 	{2,"up"},
 	{3,"down"}
+};
+std::map<int, std::string> Skin{
+	{0,"0"},
+	{1,"1"},
+	{2,"2"},
+	{3,"3"},
+	{4,"4"},
+	{5,"5"},
+	{6,"6"},
+	{7,"7"},
+	{8,"8"},
 };
 struct Swall {
 	int posX;
@@ -642,6 +607,7 @@ struct Snake {
 	int stun = 0;
 	int countwall = 0;
 	std::string status = "Snake";
+	int SkinCode = 0;
 	void randApple() {
 		//normal: 0, magic : 1, golden: 2, wall: 3, ice: 4, cherry: 5
 		// prob 0 : 30   magic:20   golden:5   wall:15   ice:15   cherry: 15
@@ -683,12 +649,12 @@ struct Snake {
 	void draw() {
 		if (lose) status = "Dead";
 		for (auto c : body) {
-			myTextures["body"].render(c.posX * 32 + (particular[0] - 'a') * 32, c.posY * 32 + 64);
+			myTextures["body" + particular].render(c.posX * 32 + (particular[0] - 'a') * 32, c.posY * 32 + 64);
 		}
 		for (auto c : wall) {
 			myTextures["wall"].render(c.posX * 32 + (particular[0] - 'a') * 32 + 1, c.posY * 32 + 65);
 		}
-		myTextures["head" + particular].load("src/" + status + "_head_" + dir[head.cur_dir] + ".png");
+		myTextures["head" + particular].load("src/Skin/"+Skin[SkinCode] + "/" + status + "_head_" + dir[head.cur_dir] + ".png");
 		myTextures["head" + particular].render(head.posX * 32 + (particular[0] - 'a') * 32, head.posY * 32 + 64);
 		myTextures["apple"+realKey].render(appleX * 32 + (particular[0] - 'a') * 32, appleY * 32 + 64);
 	}
@@ -742,6 +708,7 @@ struct Snake {
 			break;
 		}
 		if (Has_Eaten_Apple) {
+
 			if(realKey[0] == '1')
 			{
 				int temp = rand() % 3;
@@ -953,6 +920,169 @@ struct Snake {
 	}
 };
 Snake player1("c"), player2("s");
+void gBtn::handleEvent(SDL_Event* e)
+{
+	if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
+	{
+		//Get mouse position
+		int x, y;
+		SDL_GetMouseState(&x, &y);
+		//Check if mouse is in button
+		bool inside = true;
+
+		//Mouse is left of the button
+		if (x < mPos.x)
+		{
+			inside = false;
+		}
+		//Mouse is right of the button
+		else if (x > mPos.x + mPos.w)
+		{
+			inside = false;
+		}
+		//Mouse above the button
+		else if (y < mPos.y)
+		{
+			inside = false;
+		}
+		//Mouse below the button
+		else if (y > mPos.y + mPos.h)
+		{
+			inside = false;
+		}
+		//Mouse is outside button
+		if (!inside)
+		{
+			//place holder
+		}
+		//Mouse is inside button
+		else
+		{
+			//Set mouse over sprite
+			switch (e->type)
+			{
+				/*case SDL_MOUSEMOTION:
+
+					break;*/
+
+			case SDL_MOUSEBUTTONDOWN:
+				if (com == "newgame" && e->button.button == SDL_BUTTON_LEFT) {
+					bg = 2;
+					newGame();
+					Mix_HaltMusic();
+					Mix_FreeMusic(gMusic);
+					gMusic = NULL;
+				}
+				else if (com == "resume" && e->button.button == SDL_BUTTON_LEFT) {
+					if (checkSave())
+					{
+						myTextures["headc"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_head_down.png");
+						myTextures["bodyc"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_body.png");
+						myTextures["heads"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_head_down.png");
+						myTextures["bodys"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_body.png");
+						start = 0;
+						number = "3";
+						cdMusic = 0;
+						bg = 2;
+						Mix_HaltMusic();
+						Mix_FreeMusic(gMusic);
+						gMusic = NULL;
+					}
+				}
+				else if (com == "X" && e->button.button == SDL_BUTTON_LEFT) {
+					showguidebox = 0;
+					showsettingbox = 0;
+				}
+				else if (com == "pause" && e->button.button == SDL_BUTTON_LEFT) {
+					createSave();
+					if (!win.check) bg = 1;
+					if (!playMusic("src/back.wav")) {
+						printf("Failed to load music!\n");
+					}
+				}
+				else if (com == "ex" && e->button.button == SDL_BUTTON_LEFT) {
+					quit = true;
+				}
+				else if (com == "setting" && e->button.button == SDL_BUTTON_LEFT) {
+					showsettingbox = 1;
+				}
+				else if (com == "MusicLeft" && e->button.button == SDL_BUTTON_LEFT) {
+					if (percentMusicNum == 0) percentMusicNum = 100; else
+						percentMusicNum -= 25;
+					Mix_VolumeMusic(128 / 100 * percentMusicNum);
+				}
+				else if (com == "SFXLeft" && e->button.button == SDL_BUTTON_LEFT) {
+					if (percentSFXNum == 0) percentSFXNum = 100; else
+						percentSFXNum -= 25;
+					SFXchange(percentSFXNum);
+				}
+				else if (com == "SFXRight" && e->button.button == SDL_BUTTON_LEFT) {
+					if (percentSFXNum == 100) percentSFXNum = 0; else
+						percentSFXNum += 25;
+					SFXchange(percentSFXNum);
+				}
+				else if (com == "MusicRight" && e->button.button == SDL_BUTTON_LEFT) {
+					if (percentMusicNum == 100) percentMusicNum = 0; else
+						percentMusicNum += 25;
+					Mix_VolumeMusic(128 / 100 * percentMusicNum);
+				}
+				else if (com == "TimeLeft" && e->button.button == SDL_BUTTON_LEFT) {
+					if (TotalTimeSetting == 30) TotalTimeSetting = 999; else
+						if (TotalTimeSetting == 999) TotalTimeSetting = 120; else
+							TotalTimeSetting /= 2;
+				}
+				else if (com == "TimeRight" && e->button.button == SDL_BUTTON_LEFT) {
+					if (TotalTimeSetting == 999) TotalTimeSetting = 30; else
+						if (TotalTimeSetting == 120) TotalTimeSetting = 999; else
+							TotalTimeSetting *= 2;
+				}
+				else if ((com == "FSLeft" || com == "FSRight") && e->button.button == SDL_BUTTON_LEFT) {
+					if (!FScreen) {
+						SDL_SetWindowFullscreen(gWindow, SDL_WINDOW_FULLSCREEN);
+						FScreen = 1;
+					}
+					else {
+						SDL_SetWindowFullscreen(gWindow, 0);
+						FScreen = 0;
+					}
+				}
+				else if (com == "P1Left" && e->button.button == SDL_BUTTON_LEFT) {
+					if (player1.SkinCode == 0) player1.SkinCode = totalskin; else
+						player1.SkinCode--;
+					myTextures["preheadP1"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_head_right.png");
+					myTextures["prebodyP1"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_body.png");
+				}
+				else if (com == "P1Right" && e->button.button == SDL_BUTTON_LEFT) {
+					if (player1.SkinCode == totalskin) player1.SkinCode = 0; else
+						player1.SkinCode++;
+					myTextures["preheadP1"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_head_right.png");
+					myTextures["prebodyP1"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_body.png");
+				}
+				else if (com == "P2Left" && e->button.button == SDL_BUTTON_LEFT) {
+					if (player2.SkinCode == 0) player2.SkinCode = totalskin; else
+						player2.SkinCode--;
+					myTextures["preheadP2"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_head_right.png");
+					myTextures["prebodyP2"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_body.png");
+				}
+				else if (com == "P2Right" && e->button.button == SDL_BUTTON_LEFT) {
+					if (player2.SkinCode == totalskin) player2.SkinCode = 0; else
+						player2.SkinCode++;
+					myTextures["preheadP2"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_head_right.png");
+					myTextures["prebodyP2"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_body.png");
+				}
+				else if (com == "guide" && e->button.button == SDL_BUTTON_LEFT) {
+					showguidebox = 1;
+				}
+				break;
+			default:
+				break;
+				/*case SDL_MOUSEBUTTONUP:
+
+					break;*/
+			}
+		}
+	}
+}
 std::string GameStatus::status() {
 	if (player1.lose && !player2.lose) return "p2";
 	if (player2.lose && !player1.lose) return "p1";
@@ -961,7 +1091,7 @@ std::string GameStatus::status() {
 }
 void CD() {
 	if (!cdMusic) {
-		if (music && !Mix_Playing(5)) {
+		if (!Mix_Playing(5)) {
 			if(number[0] > '0')
 				Mix_PlayChannel(5, NB, 0); 
 			else
@@ -979,11 +1109,9 @@ void CD() {
 	if (number[0] == '0'-1) {
 		start = 1;
 		cur_time = clock();
-		if (music) {
-			if (!playMusic("src/ingame.wav") && music == true) {
+			if (!playMusic("src/ingame.wav")) {
 				printf("Failed to load music!\n");
 			}
-		}
 	}
 }
 void background2() {
@@ -1057,7 +1185,7 @@ void background2() {
 					player2.status = "Stunned";
 				}
 				else 
-					player2.move();
+				player2.move();
 				player2.countedFrames = 0;
 			}
 		}
@@ -1077,11 +1205,14 @@ void background2() {
 	{
 		myTextures["EndGame"].load("src/" + win.status() + ".png");
 		myTextures["EndGame"].render(512 - myTextures["EndGame"].getWidth() / 2, 384 - myTextures["EndGame"].getHeight() / 2);
-		win.winText.load("Press SPACE to continue ...", EndGameColor);
 		win.winText.render(512 - win.winText.getWidth() / 2, 550);
 	}
 }
 void newGame() {
+	myTextures["headc"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_head_down.png");
+	myTextures["bodyc"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_body.png");
+	myTextures["heads"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_head_down.png");
+	myTextures["bodys"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_body.png");
 	cdMusic = 0;
 	start = 0;
 	number = "3";
@@ -1094,7 +1225,7 @@ void newGame() {
 	while (!player2.PRESSKEY.empty()) {
 		player2.PRESSKEY.pop();
 	}
-	TotalTime = 60;
+	TotalTime = TotalTimeSetting;
 }
 bool checkSave() {
 	std::ifstream o1, o2;
@@ -1191,11 +1322,16 @@ bool loadMedia()
 	GO = Mix_LoadWAV("src/GO.wav");
 	NB = Mix_LoadWAV("src/NB.wav");
 	click = Mix_LoadWAV("src/click.wav");
-	eat = Mix_LoadWAV("src/yummy.wav");
-	myTextures["headc"].load("src/Snake_head_down.png");
-	myTextures["heads"].load("src/Snake_head_down.png");
+	eat = Mix_LoadWAV("src/eat.wav");
+	myTextures["headc"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_head_down.png");
+	myTextures["heads"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_head_down.png");
+	myTextures["preheadP1"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_head_right.png");
+	myTextures["preheadP2"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_head_right.png");
 	myTextures["apple0"].load("src/apple.png");
-	myTextures["body"].load("src/Snake_body.png");
+	myTextures["bodyc"].load("src/Skin/"+Skin[player1.SkinCode]+"/Snake_body.png");
+	myTextures["bodys"].load("src/Skin/"+Skin[player2.SkinCode]+"/Snake_body.png");
+	myTextures["prebodyP1"].load("src/Skin/" + Skin[player1.SkinCode] + "/Snake_body.png");
+	myTextures["prebodyP2"].load("src/Skin/" + Skin[player2.SkinCode] + "/Snake_body.png");
 	myTextures["background"].load("src/backmap1.png");
 	myTextures["playground"].load("src/playground.png");
 	myTextures["timebox"].load("src/time_box.png");
@@ -1204,8 +1340,6 @@ bool loadMedia()
 	myTextures["resume"].load("src/resume.png");
 	myTextures["guide"].load("src/guide.png");
 	myTextures["pause"].load("src/pause.png");
-	myTextures["moff"].load("src/moff.png");
-	myTextures["mon"].load("src/mon.png");
 	myTextures["guidebox"].load("src/guidebox.png");
 	myTextures["X"].load("src/X.png");
 	myTextures["apple1"].load("src/magicapple.png");
@@ -1215,7 +1349,21 @@ bool loadMedia()
 	myTextures["apple5"].load("src/cherry.png");
 	myTextures["wall"].load("src/wall.png");
 	myTextures["Title"].load("src/title.png");
-
+	myTextures["setting"].load("src/setting.png");
+	myTextures["settingbox"].load("src/setting_box.png");
+	win.winText.load("Press SPACE to continue ...", EndGameColor);
+	myTextures["MusicLeft"].load("src/Sbutton.png");
+	myTextures["MusicRight"].load("src/Sbutton.png");
+	myTextures["SFXLeft"].load("src/Sbutton.png");
+	myTextures["SFXRight"].load("src/Sbutton.png");
+	myTextures["TimeLeft"].load("src/Sbutton.png");
+	myTextures["TimeRight"].load("src/Sbutton.png");
+	myTextures["FSLeft"].load("src/Sbutton.png");
+	myTextures["FSRight"].load("src/Sbutton.png");
+	myTextures["P1Left"].load("src/Sbutton.png");
+	myTextures["P1Right"].load("src/Sbutton.png");
+	myTextures["P2Left"].load("src/Sbutton.png");
+	myTextures["P2Right"].load("src/Sbutton.png");
 	//Loading success flag
 	bool success = true;
 	//Open the font
@@ -1230,7 +1378,12 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	if (!myTextures["apple2"].check())
+	if (!myTextures["MusicLeft"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["apple" + '2'].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -1249,11 +1402,13 @@ bool loadMedia()
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
-	}if (!myTextures["apple4"].check())
+	}
+	if (!myTextures["apple4"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
-	}if (!myTextures["apple5"].check())
+	}
+	if (!myTextures["apple5"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -1283,12 +1438,26 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
+	if (!myTextures["settingbox"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
+	if (!myTextures["setting"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}
 	if (!playMusic("src/back.wav")) {
 		printf("Failed to load music!\n");
 		success = false;
 	}
 
-	if (!myTextures["body"].check())
+	if (!myTextures["bodyc"].check())
+	{
+		printf("Failed to load texture image!\n");
+		success = false;
+	}if (!myTextures["bodys"].check())
 	{
 		printf("Failed to load texture image!\n");
 		success = false;
@@ -1333,24 +1502,27 @@ bool loadMedia()
 		printf("Failed to load texture image!\n");
 		success = false;
 	}
-	if (!myTextures["moff"].check())
-	{
-		printf("Failed to load texture image!\n");
-		success = false;
-	}
-	if (!myTextures["mon"].check())
-	{
-		printf("Failed to load texture image!\n");
-		success = false;
-	}
 	gBtns1[0].getInf("newgame");
 	gBtns1[1].getInf("guide");
 	gBtns1[2].getInf("resume");
 	gBtns1[3].getInf("ex");
-	gBtns1[4].getInf("mon");
-	gBtns1[5].getInf("moff");
+	gBtns1[6].getInf("X");
+	gBtns1[7].getInf("setting");
 
 	gBtns2[0].getInf("pause");
+
+	SBT[0].getInf("MusicLeft" , 328,251);
+	SBT[1].getInf("MusicRight" , 448,251);
+	SBT[2].getInf("SFXLeft" , 712,251);
+	SBT[3].getInf("SFXRight" , 832,251);
+	SBT[4].getInf("TimeLeft" , 328,347);
+	SBT[5].getInf("TimeRight" , 448,347);
+	SBT[6].getInf("FSLeft" , 712,347);
+	SBT[7].getInf("FSRight" , 832,347);
+	SBT[8].getInf("P1Left" , 168,523);
+	SBT[9].getInf("P1Right" , 448,523);
+	SBT[10].getInf("P2Left" , 552,523);
+	SBT[11].getInf("P2Right" , 832,523);
 
 	return success;
 }
@@ -1415,27 +1587,30 @@ int main(int argc, char* args[])
 						quit = true;
 					}
 					if (e.type == SDL_MOUSEBUTTONDOWN) {
-						if (music) {
 							Mix_PlayChannel(-1, click, 0);
-
-						}
 					}
 					if (bg == 1) {
-						if (!showguidebox) {
-							for (int i = 0; i < 6; ++i)
+						if (showguidebox) {
+							gBtns1[6].handleEvent(&e);
+						}
+						else
+						{
+							if (showsettingbox) 
 							{
-								int temp = bg;
-								gBtns1[i].handleEvent(&e);
-								if (bg != temp) {
-									break;
+								gBtns1[6].handleEvent(&e);
+								for (int i = 0; i < totalSBtn; i++) {
+									SBT[i].handleEvent(&e);
 								}
 							}
-						}
-						else {
-							int temp = bg;
-							gBtns1[6].handleEvent(&e);
-							if (bg != temp) {
-								break;
+							else {
+								for (int i = 0; i < totalBtn1; ++i)
+								{
+									int temp = bg;
+									gBtns1[i].handleEvent(&e);
+									if (bg != temp) {
+										break;
+									}
+								}
 							}
 						}
 					}
@@ -1451,12 +1626,9 @@ int main(int argc, char* args[])
 						if (win.check) {
 							if (e.key.keysym.sym == SDLK_SPACE) 
 							{
-								if (music) {
-									if (!playMusic("src/back.wav") && music == true) {
+									if (!playMusic("src/back.wav")) {
 										printf("Failed to load music!\n");
 									}
-
-								}
 								bg = 1;
 								std::remove("src/ssave.txt");
 								std::remove("src/csave.txt");
