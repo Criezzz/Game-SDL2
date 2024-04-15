@@ -1114,6 +1114,15 @@ void CD() {
 			}
 	}
 }
+bool wrongwall(int x, int y ,int grid[20][12]) {
+	if (grid[x][y] != 0) return 1;
+	for (int i = -1; i < 2; i++)
+		for (int j = -1; j < 2; j++) {
+			if (x + i < 0 || x + i>19 || y + j < 0 || y + j>11) continue;
+			if (grid[x+i][y+j] == 1) return 1;
+		}
+	return 0;
+}
 void background2() {
 	myTextures["background"].render(0, 0);
 	timebox.load(timebox.GetNumber(TotalTime, 3), textColor);
@@ -1133,28 +1142,28 @@ void background2() {
 	player2.getPos();
 	if(start)
 	{
-		for (int i = 0; i < player1.countwall; i++) {
+		while(player1.countwall>0) {
 			int x = rand() % 20;
 			int y = rand() % 12;
-			while (player2.a[x][y] != 0) {
+			while (wrongwall(x, y, player2.a)) {
 				x = rand() % 20;
 				y = rand() % 12;
 			}
 			Swall* newwall = new Swall{ y,x };
 			player2.wall.push_back(*(newwall));
+			--player1.countwall;
 		}
-		player1.countwall = 0;
-		for (int i = 0; i < player2.countwall; i++) {
+		while(player2.countwall>0) {
 			int x = rand() % 20;
 			int y = rand() % 12;
-			while (player1.a[x][y] != 0) {
+			while (wrongwall(x,y,player1.a)) {
 				x = rand() % 20;
 				y = rand() % 12;
 			}
 			Swall* newwall = new Swall{ y,x };
 			player1.wall.push_back(*(newwall));
+			--player2.countwall;
 		}
-		player2.countwall = 0;
 		if (TotalTime == 0) {
 			player1.lose = true;
 			player2.lose = true;
