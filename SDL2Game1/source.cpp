@@ -580,6 +580,15 @@ std::map<int, std::string> Skin{
 	{7,"7"},
 	{8,"8"},
 };
+//Set time for unique apple
+std::map<char, int> AT{
+	{'0',10},
+	{'1',7},
+	{'2',5},
+	{'3',9},
+	{'4',9},
+	{'5',9},
+};
 struct Swall {
 	int posX;
 	int posY;
@@ -607,7 +616,8 @@ struct Snake {
 	int stun = 0;
 	int countwall = 0;
 	std::string status = "Snake";
-	int SkinCode = 0;
+	Uint8 SkinCode = 0;
+	int Appletime = 10;
 	void randApple() {
 		//normal: 0, magic : 1, golden: 2, wall: 3, ice: 4, cherry: 5
 		// prob 0 : 30   magic:20   golden:5   wall:15   ice:15   cherry: 15
@@ -623,6 +633,7 @@ struct Snake {
 		}
 		realKey = "";
 		realKey += aKey;
+		Appletime = AT[aKey];
 	}
 	void getPos() {
 		std::ifstream in;
@@ -657,6 +668,8 @@ struct Snake {
 		myTextures["head" + particular].load("src/Skin/"+Skin[SkinCode] + "/" + status + "_head_" + dir[head.cur_dir] + ".png");
 		myTextures["head" + particular].render(head.posX * 32 + (particular[0] - 'a') * 32, head.posY * 32 + 64);
 		myTextures["apple"+realKey].render(appleX * 32 + (particular[0] - 'a') * 32, appleY * 32 + 64);
+		for (int i = 0; i < Appletime; i++)
+			myTextures["apple" + realKey].render(i*32 + (particular[0] - 'a') * 32,  5);
 	}
 	void move()
 	{
@@ -708,15 +721,14 @@ struct Snake {
 			break;
 		}
 		if (Has_Eaten_Apple) {
-
-			if(realKey[0] == '1')
+			if (realKey[0] == '1')
 			{
 				int temp = rand() % 3;
 				std::string t;
 				t += char(temp + '3');
 				realKey = t;
 			}
-			switch (realKey[0]){
+			switch (realKey[0]) {
 			case '0':
 				Score.points += 100 * mind / countedStep + mind;
 				break;
@@ -732,9 +744,11 @@ struct Snake {
 				break;
 			case '3':
 				countwall = rand() % 3 + 1;
+				Score.points += (100 * mind / countedStep + mind);
 				break;
 			case '4':
 				stun = 5;
+				Score.points += (100 * mind / countedStep + mind);
 				break;
 			case '5':
 				Score.points += (100 * mind / countedStep + mind) * 2;
@@ -743,8 +757,10 @@ struct Snake {
 				break;
 			}
 			Snake_pos* newbody = new Snake_pos{ preX , preY , predir };
-			mind = -1;
 			body.push_back(*(newbody));
+		}
+		if (Has_Eaten_Apple || Appletime == 0) {
+			mind = -1;
 			countedStep = 0;
 			randApple();
 			while (a[appleY][appleX] != 0) {
@@ -855,6 +871,7 @@ struct Snake {
 	void newGame() {
 		wall.clear();
 		body.clear();
+		Appletime = 10;
 		lose = 0;
 		Score.points = 0;
 		head.posX = 1;
@@ -887,7 +904,8 @@ struct Snake {
 		o.open("src/" + particular + "save.txt", std::ios::trunc);
 		o << head.posX << " " << head.posY << " " << head.cur_dir << '\n';
 		o << appleX << " " << appleY << '\n';
-		o << countedFrames << " " << countedStep << " " << setSpeed <<" "<<TotalTime<<" "<<mind<<" "<<realKey<<" "<<stun<<" "<<status<<'\n';
+		o << countedFrames << " " << countedStep << " " << setSpeed << " " << TotalTime << " " << mind << " " << realKey << " " << stun << " " << status << '\n';
+		o << Appletime << '\n';
 		o << body.size() << '\n';
 		for (auto c : body)
 			o << c.posX << " " << c.posY << " " << c.cur_dir << '\n';
@@ -901,7 +919,7 @@ struct Snake {
 		std::ifstream r;
 		r.open("src/" + particular + "save.txt"); 
 		r >> head.posX >> head.posY >> head.cur_dir;
-		r >> appleX >> appleY >> countedFrames >> countedStep >> setSpeed >> TotalTime >> mind >> realKey >> stun >> status;
+		r >> appleX >> appleY >> countedFrames >> countedStep >> setSpeed >> TotalTime >> mind >> realKey >> stun >> status>>Appletime;
 		Snake_pos temp(0,0,0);
 		int s;
 		r >> s;
@@ -1042,7 +1060,7 @@ void gBtn::handleEvent(SDL_Event* e)
 						FScreen = 1;
 					}
 					else {
-						SDL_SetWindowFullscreen(gWindow, 0);
+						SDL_SetWindowFullscreen(gWindow,0);
 						FScreen = 0;
 					}
 				}
@@ -1143,6 +1161,7 @@ void background2() {
 	if(start)
 	{
 		while(player1.countwall>0) {
+			if (player2.wall.size() > 20) player1.countwall = 0;
 			int x = rand() % 20;
 			int y = rand() % 12;
 			while (wrongwall(x, y, player2.a)) {
@@ -1154,6 +1173,7 @@ void background2() {
 			--player1.countwall;
 		}
 		while(player2.countwall>0) {
+			if (player1.wall.size() > 20) player2.countwall = 0;
 			int x = rand() % 20;
 			int y = rand() % 12;
 			while (wrongwall(x,y,player1.a)) {
@@ -1171,6 +1191,8 @@ void background2() {
 		if (int((clock() - cur_time) / CLOCKS_PER_SEC) == 1 && !player1.lose && !player2.lose) {
 			cur_time = clock();
 			--TotalTime;
+			--player1.Appletime;
+			--player2.Appletime;
 		}
 		if (!(player1.lose)) {
 			if (player1.countedFrames > player1.setSpeed) {
