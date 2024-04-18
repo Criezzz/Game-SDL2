@@ -4,3 +4,26 @@
 
 /.vs
 /SDL2Game1/.vs/SDL2Game1
+*/**/bin/Debug
+*/**/bin/Release
+*.exe
+*.pdb
+*.manifest
+*.cache
+/build/
+*.suo
+*.user
+_ReSharper.*/
+*.sdf
+bin/
+obj/
+Debug/
+Release/
+*.opensdf
+*.tlog
+*.log
+TestResult.xml
+*.VisualState.xml
+Version.cs
+Version.h
+Version.cpp

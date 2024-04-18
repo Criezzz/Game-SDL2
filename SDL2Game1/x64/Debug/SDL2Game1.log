@@ -1,3 +1,3 @@
 ﻿  source.cpp
-C:\Users\THINKPAD\Desktop\projects\Game SDL2\SDL2Game1\source.cpp(105,10): warning C4553: '==': result of expression not used; did you intend '='?
+C:\Users\THINKPAD\Desktop\projects\Game SDL2\SDL2Game1\source.cpp(978,12): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
   SDL2Game1.vcxproj -> C:\Users\THINKPAD\Desktop\projects\Game SDL2\SDL2Game1\x64\Debug\SDL2Game1.exe
