@@ -99,6 +99,8 @@ std::string number;
 //Global variables
 TTF_Font* gFont = NULL;
 SDL_Color textColor = { 0, 0, 0 }, EndGameColor = { 240,240,240 };
+SDL_Surface* iconSurface;
+
 int bg = 1;
 bool showguidebox = 0;
 bool showsettingbox = 0;
@@ -1292,7 +1294,7 @@ bool init()
 	//Initialization flag
 	bool success = true;
 	//Create window
-	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+	gWindow = SDL_CreateWindow("SNAKE", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	if (gWindow == NULL)
 	{
 		printf("Window could not be created! SDL Error: %s\n", SDL_GetError());
@@ -1349,6 +1351,8 @@ bool init()
 
 bool loadMedia()
 {
+	iconSurface = IMG_Load("src/windowIcon.png");
+	SDL_SetWindowIcon(gWindow, iconSurface);
 	gFont = TTF_OpenFont("src/snake.ttf", 28);
 	GO = Mix_LoadWAV("src/GO.wav");
 	NB = Mix_LoadWAV("src/NB.wav");
@@ -1402,6 +1406,11 @@ bool loadMedia()
 	if (gFont == NULL)
 	{
 		printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
+		success = false;
+	}
+	if (!iconSurface)
+	{
+		printf("Failed to load texture image!\n");
 		success = false;
 	}
 	if (!myTextures["apple1"].check())
@@ -1576,6 +1585,7 @@ void close()
 	gRenderer = NULL;
 	Mix_FreeMusic(gMusic);
 	gMusic = NULL;
+	SDL_FreeSurface(iconSurface);
 
 	//Quit SDL subsystems
 	TTF_Quit();
