@@ -8,7 +8,7 @@ This is a small SDL2 project done by me and Quân [@Darkin72](https://github.com
 2. Require `WinRAR`.  Download it [here](https://www.win-rar.com/download.html?&L=0).
 
 # **Installation**
-1. Download file `.rar` [here](https://drive.google.com/file/d/1kByUezcMyE8_K2BO2rRx4nef4X7LIeFG/view?usp=sharing).
+1. Download file `.rar` [here](https://drive.google.com/drive/folders/1970yQvi4Ae6bi0LVPR3AcY2-UW5mcwoc?usp=sharing).
 2. Extract using `WinRAR`.
 3. Run `SDL2Game1.exe`.
 4. Enjoy!
