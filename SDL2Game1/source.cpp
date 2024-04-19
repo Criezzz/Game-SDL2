@@ -1014,7 +1014,7 @@ void gBtn::handleEvent(SDL_Event* e)
 					showsettingbox = 0;
 					std::ofstream st;
 					st.open("src/setting.txt");
-					st << percentMusicNum << " " << percentSFXNum << " " << TotalTimeSetting << " " << FScreen;
+					st << percentMusicNum << " " << percentSFXNum << " " << TotalTimeSetting << " " << FScreen << " " << player1.SkinCode << " " << player2.SkinCode;
 					st.close();
 				}
 				else if (com == "pause" && e->button.button == SDL_BUTTON_LEFT) {
@@ -1358,7 +1358,7 @@ bool loadMedia()
 	//Load setting
 	std::ifstream st;
 	st.open("src/setting.txt");
-	st >> percentMusicNum >> percentSFXNum >> TotalTimeSetting >> FScreen;
+	st >> percentMusicNum >> percentSFXNum >> TotalTimeSetting >> FScreen >> player1.SkinCode >> player2.SkinCode;
 	Mix_VolumeMusic(128 / 100 * percentMusicNum);
 	SFXchange(percentSFXNum);
 	if (FScreen) {
