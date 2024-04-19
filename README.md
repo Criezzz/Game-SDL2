@@ -26,5 +26,5 @@ _Note:_ The fullscreen toggle is a bit buggy due to my screen capturing program,
 # **Installation**
 1. Download file `.rar` [here](https://drive.google.com/drive/folders/1970yQvi4Ae6bi0LVPR3AcY2-UW5mcwoc?usp=sharing).
 2. Extract using `WinRAR`.
-3. Run `SDL2Game1.exe`.
+3. Run `SNAKE.exe`.
 4. Enjoy!
