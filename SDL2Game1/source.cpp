@@ -1012,6 +1012,10 @@ void gBtn::handleEvent(SDL_Event* e)
 				else if (com == "X" && e->button.button == SDL_BUTTON_LEFT) {
 					showguidebox = 0;
 					showsettingbox = 0;
+					std::ofstream st;
+					st.open("src/setting.txt");
+					st << percentMusicNum << " " << percentSFXNum << " " << TotalTimeSetting << " " << FScreen;
+					st.close();
 				}
 				else if (com == "pause" && e->button.button == SDL_BUTTON_LEFT) {
 					createSave();
@@ -1351,6 +1355,20 @@ bool init()
 
 bool loadMedia()
 {
+	//Load setting
+	std::ifstream st;
+	st.open("src/setting.txt");
+	st >> percentMusicNum >> percentSFXNum >> TotalTimeSetting >> FScreen;
+	Mix_VolumeMusic(128 / 100 * percentMusicNum);
+	SFXchange(percentSFXNum);
+	if (FScreen) {
+		SDL_SetWindowFullscreen(gWindow, SDL_WINDOW_FULLSCREEN);
+	}
+	else {
+		SDL_SetWindowFullscreen(gWindow, 0);
+	}
+	st.close();
+	//Loading image and music
 	iconSurface = IMG_Load("src/windowIcon.png");
 	SDL_SetWindowIcon(gWindow, iconSurface);
 	gFont = TTF_OpenFont("src/snake.ttf", 28);
