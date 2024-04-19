@@ -16,6 +16,7 @@ This is a 2-player competitive snake game whose win conditions are getting highe
 - Using updated built-in class `SDL_Texture` instead of old `SDL_Surface` to render textures out.
 - Self-designing art (using Aseprite on Steam).
 - Has sound effect and background music.
+- Having save files.
 - Using BFS to calculate score.
 
 # **Demo**
